@@ -80,6 +80,16 @@ describe("unlockReady", () => {
   });
 });
 
+describe("keyboard lock expectations", () => {
+  // The mechanism lives in lock.js against real browser APIs and cannot be unit
+  // tested here. What can be pinned is the contract the UI copy depends on: the
+  // ritual must be long enough that the browser's own 2s Escape hold is never
+  // the cheaper way out, or people will just use that every time.
+  it("the hold is longer than the browser's 2s force-exit", () => {
+    expect(P.DEFAULTS.holdSeconds).toBeGreaterThan(2);
+  });
+});
+
 describe("defaults", () => {
   it("ships disarmed, so installing it never traps a tab", () => {
     expect(P.DEFAULTS.armed).toBe(false);

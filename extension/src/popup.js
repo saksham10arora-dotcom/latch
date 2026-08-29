@@ -12,7 +12,7 @@ chrome.storage.local.get(D, (s) => {
 
 function status(armed) {
   $("status").textContent = armed
-    ? "Armed. Leaving full screen raises the wall."
+    ? "Armed. Escape is swallowed; a 2s hold forces out."
     : "Off. Go full screen, then arm it.";
 }
 

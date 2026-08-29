@@ -139,14 +139,47 @@
 
   // --- the actual enforcement ----------------------------------------------
 
-  // Escape cannot be cancelled: exiting full screen is user-agent behaviour, so
-  // preventDefault here does not stop it. The wall below is what answers it.
-  // This handler exists only for the in-page exits it CAN stop, like the
-  // player's own full screen button and the "f" shortcut.
+  /**
+   * Keyboard Lock is the mechanism. While it is held and the page is in full
+   * screen, Escape is delivered to the page as an ordinary keydown and does NOT
+   * exit full screen. It is the same API remote-desktop and cloud-gaming pages
+   * use, and it is why a press of Escape here does nothing at all.
+   *
+   * It must be re-taken every time full screen is entered, because leaving full
+   * screen releases it automatically.
+   */
+  async function takeKeyboardLock() {
+    if (!navigator.keyboard?.lock) return false;
+    try {
+      await navigator.keyboard.lock(["Escape"]);
+      return true;
+    } catch {
+      // Denied or unsupported. The wall still covers the exit, so the lock
+      // degrades to the old behaviour instead of failing open.
+      return false;
+    }
+  }
+
+  function releaseKeyboardLock() {
+    try { navigator.keyboard?.unlock?.(); } catch { /* nothing to undo */ }
+  }
+
   document.addEventListener(
     "keydown",
     (e) => {
       if (!state.armed || !inFullscreen()) return;
+
+      // With the lock held this is where Escape arrives instead of exiting.
+      // Swallowing it silently would read as a broken page, so it gets a brief,
+      // honest toast rather than nothing.
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        toast();
+        return;
+      }
+
+      // YouTube's own full screen shortcut.
       if (e.key === "f" || e.key === "F") {
         e.preventDefault();
         e.stopPropagation();
@@ -155,10 +188,30 @@
     true
   );
 
+  // The player's exit-full-screen button is a page element, not browser chrome,
+  // so a capture-phase click handler can stop it outright.
+  document.addEventListener(
+    "click",
+    (e) => {
+      if (!state.armed || !inFullscreen()) return;
+      const button = e.target?.closest?.(".ytp-fullscreen-button, .ytp-size-button");
+      if (!button) return;
+      e.preventDefault();
+      e.stopPropagation();
+      toast();
+    },
+    true
+  );
+
   document.addEventListener("fullscreenchange", () => {
     if (!state.armed) return;
-    if (inFullscreen()) down();
-    else up();
+    if (inFullscreen()) {
+      down();
+      takeKeyboardLock();
+    } else {
+      releaseKeyboardLock();
+      up();
+    }
   });
 
   // Closing the tab is the other way out. Strict mode makes the browser ask.
@@ -168,16 +221,48 @@
     e.returnValue = "";
   });
 
+  // --- toast ---------------------------------------------------------------
+
+  let toastEl = null;
+  let toastTimer = null;
+
+  /**
+   * Feedback for a swallowed Escape. Says what happened and what the real exit
+   * costs, because a key that does nothing with no explanation reads as a bug,
+   * and hiding the hold-Escape route would be dishonest: the browser prompts
+   * for it anyway.
+   */
+  function toast() {
+    if (!toastEl) {
+      toastEl = document.createElement("div");
+      toastEl.id = "latch-toast";
+      document.documentElement.appendChild(toastEl);
+    }
+    toastEl.textContent = "Locked in. Hold Esc to force out, and the wall is waiting.";
+    toastEl.classList.add("on");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toastEl?.classList.remove("on"), 2200);
+  }
+
   // --- wiring --------------------------------------------------------------
 
   chrome.storage.local.get(P.DEFAULTS, (stored) => {
     state = { ...P.DEFAULTS, ...stored };
+    if (state.armed && inFullscreen()) takeKeyboardLock();
     if (state.armed && !inFullscreen()) up();
   });
 
   chrome.storage.onChanged.addListener((changes) => {
     for (const [k, { newValue }] of Object.entries(changes)) state[k] = newValue;
-    if (!state.armed) down();
-    else if (!inFullscreen()) up();
+    if (!state.armed) {
+      releaseKeyboardLock();
+      down();
+    } else if (inFullscreen()) {
+      // Armed mid-lecture, already full screen: take the lock now rather than
+      // waiting for the next full screen transition that may never come.
+      takeKeyboardLock();
+    } else {
+      up();
+    }
   });
 })();

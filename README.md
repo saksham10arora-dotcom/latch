@@ -33,31 +33,38 @@ leaving **full screen**, because that happens inside the page, where a native ap
 cannot see.
 
 `extension/` is a Chrome extension that handles that half. Arm it with **Cmd-Shift-L**
-while a lecture is playing, and leaving full screen raises a wall over the whole
-page instead of giving you YouTube back.
+while a lecture is playing, and Escape stops working.
 
 Getting out is a **hold**, not a click, defaulting to eight seconds, optionally
 with a phrase to type as well. Letting go resets the timer, so it cannot be
 chipped away at in half-second bursts. The video pauses behind the wall, because
 otherwise the lecture plays on while you are not watching it.
 
-### What is actually enforceable
+### Escape does nothing
 
-Escape **cannot** be cancelled. Exiting full screen on Escape is user-agent
-behaviour: the keydown fires, but `preventDefault()` does not stop the exit. No
-extension can hold a video in full screen against that key, and any that claims
-to is doing what this one does.
+`navigator.keyboard.lock(["Escape"])` is the mechanism. It is the same
+Keyboard Lock API remote-desktop and cloud-gaming pages use, and while it is held
+in full screen, Escape is delivered to the page as an ordinary keydown and does
+**not** exit full screen. Press it and nothing happens except a toast.
 
-Re-entering is gated too. `requestFullscreen()` only runs inside a user gesture,
-so nothing can silently put you back.
+The `f` shortcut and YouTube's own full screen button are page-level, so both are
+stopped outright by capture-phase handlers.
 
-So the design lets the exit happen and answers it in the same frame: the wall
-covers the page before the video is visible again, and its **Back to the lecture**
-button is a real click, which is the user gesture `requestFullscreen()` needs.
+| Route out | What stops it |
+|---|---|
+| Press Escape | Keyboard Lock swallows it |
+| `f` key | keydown intercepted |
+| Player's full screen button | click intercepted |
+| **Hold Escape ~2s** | **Cannot be blocked.** The wall catches the exit. |
+| Close the tab | `beforeunload` prompt in strict mode |
 
-The video is not literally trapped. What is true is that leaving buys you
-nothing, and the cheapest way out of the wall is back into the lecture. Full
-reasoning in `extension/NOTES.md`.
+That last row is a deliberate browser guarantee and no API can remove it. It is
+also the right line: a page able to trap someone in full screen with no way out
+would be a dangerous thing to be able to build. Chrome shows its own "Press and
+hold Esc to exit" prompt.
+
+So, precisely: **a press of Escape does nothing. Getting out takes a two second
+hold, and then the wall is waiting.** Full reasoning in `extension/NOTES.md`.
 
 ## Lecture mode: the focus lock
 

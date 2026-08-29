@@ -24,3 +24,5 @@ input[type=number], input[type=text] {
 .switch input:checked + span { background:var(--accent); border-color:var(--accent); }
 .switch input:checked + span::before { transform:translate(15px,-50%); background:#0e1015; }
 @media (prefers-reduced-motion: reduce) { .switch span, .switch span::before { transition:none; } }
+
+.note { color:var(--muted); font-size:11px; margin:0 0 10px; line-height:1.45; }
