@@ -9,6 +9,7 @@
    */
   const DEFAULTS = {
     armed: false,        // is the lock active for this tab
+    engaged: false,      // has full screen actually been entered under this arming
     holdSeconds: 8,      // how long the unlock button must be held
     phrase: "",          // optional: also retype this
     strict: false,       // warn before closing the tab or navigating away
@@ -118,7 +119,30 @@
     return now !== wasArmed;
   }
 
-  const api = { DEFAULTS, NUDGES, nudge, unlockReady, isArmingChange };
+  /**
+   * May the toolbar popup turn the lock off?
+   *
+   * No, once the lock has actually engaged. Otherwise the eight second hold is
+   * theatre: the wall appears, and two clicks in the popup dismiss it. Every
+   * route out has to cost the same thing or the cheapest one becomes the only
+   * one anybody uses.
+   *
+   * Before it engages, the popup is the *only* way to disarm, so it must work:
+   * arming and then changing your mind is not an escape attempt.
+   */
+  function canDisarmFromPopup({ armed = false, engaged = false } = {}) {
+    if (!armed) return true;
+    return !engaged;
+  }
+
+  const api = {
+    DEFAULTS,
+    NUDGES,
+    nudge,
+    unlockReady,
+    isArmingChange,
+    canDisarmFromPopup,
+  };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   root.LatchPersuade = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);

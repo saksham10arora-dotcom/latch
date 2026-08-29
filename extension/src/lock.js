@@ -136,9 +136,9 @@
     state.armed = false;
     engaged = false;
     releaseKeyboardLock();
-    // Through the worker, so the pinned tab is cleared in the same step the
-    // lock is dropped. Setting storage directly would leave a stale pin behind.
-    chrome.runtime.sendMessage({ type: "disarm" }).catch(() => {});
+    // "release", not "disarm": the worker refuses a disarm once the lock has
+    // engaged, and this is the one route that is allowed through.
+    chrome.runtime.sendMessage({ type: "release" }).catch(() => {});
     down();
   }
 
@@ -258,6 +258,9 @@
     if (!state.armed) return;
     if (inFullscreen()) {
       engaged = true;
+      // Published so the popup can grey its toggle out and the worker can
+      // refuse a disarm from anywhere except the wall.
+      chrome.storage.local.set({ engaged: true });
       down();
       takeKeyboardLock();
     } else {
@@ -303,6 +306,7 @@
     state = { ...P.DEFAULTS, ...stored };
     if (state.armed && inFullscreen()) {
       engaged = true;
+      chrome.storage.local.set({ engaged: true });
       takeKeyboardLock();
     }
   });
@@ -324,6 +328,7 @@
       // Armed mid-lecture, already full screen: take the lock now rather than
       // waiting for the next transition, which may never come.
       engaged = true;
+      chrome.storage.local.set({ engaged: true });
       takeKeyboardLock();
       toast("Locked in. Escape and tab switching are off.");
     } else {

@@ -26,3 +26,6 @@ input[type=number], input[type=text] {
 @media (prefers-reduced-motion: reduce) { .switch span, .switch span::before { transition:none; } }
 
 .note { color:var(--muted); font-size:11px; margin:0 0 10px; line-height:1.45; }
+
+.locked-note { color:#f8b45a; font-size:11px; line-height:1.45; margin:0 0 12px; }
+.switch input:disabled + span { opacity:.45; cursor:not-allowed; }

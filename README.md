@@ -44,7 +44,11 @@ contested `suggested_key` silently rather than reporting it. Set your own at
 `chrome://extensions/shortcuts`.
 
 Getting out is a **hold**, not a click, defaulting to eight seconds, optionally
-with a phrase to type as well. Letting go resets the timer, so it cannot be
+with a phrase to type as well. **The toolbar popup cannot end it once it has
+engaged**, and neither can the keyboard shortcut: the wall's hold is the only
+route through. Every exit has to cost the same thing, or the cheapest one is the
+only one anyone ever uses. Removing the extension still works, which is the
+deliberate floor under it. Letting go resets the timer, so it cannot be
 chipped away at in half-second bursts. The video pauses behind the wall, because
 otherwise the lecture plays on while you are not watching it.
 

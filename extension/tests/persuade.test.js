@@ -139,3 +139,34 @@ describe("isArmingChange", () => {
     expect(P.isArmingChange(undefined, true)).toBe(false);
   });
 });
+
+describe("canDisarmFromPopup", () => {
+  // The bypass this closes: the wall appears, and two clicks in the toolbar
+  // popup dismiss it, making the eight second hold theatre.
+  it("refuses once the lock has engaged", () => {
+    expect(P.canDisarmFromPopup({ armed: true, engaged: true })).toBe(false);
+  });
+
+  it("allows it before full screen was ever entered", () => {
+    // Arming and immediately changing your mind is not an escape attempt, and
+    // the popup is the only way back at that point.
+    expect(P.canDisarmFromPopup({ armed: true, engaged: false })).toBe(true);
+  });
+
+  it("allows it when nothing is armed", () => {
+    expect(P.canDisarmFromPopup({ armed: false, engaged: false })).toBe(true);
+    expect(P.canDisarmFromPopup({ armed: false, engaged: true })).toBe(true);
+  });
+
+  it("defaults to allowing rather than trapping on missing state", () => {
+    // A missing flag must never be the thing that locks someone out.
+    expect(P.canDisarmFromPopup({})).toBe(true);
+    expect(P.canDisarmFromPopup()).toBe(true);
+  });
+});
+
+describe("engaged default", () => {
+  it("ships false, so a fresh install is never already locked", () => {
+    expect(P.DEFAULTS.engaged).toBe(false);
+  });
+});

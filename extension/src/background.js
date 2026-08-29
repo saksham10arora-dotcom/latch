@@ -13,11 +13,12 @@ importScripts("persuade.js");
 // The service worker can be killed and restarted at any time, so every piece of
 // state it needs lives in chrome.storage rather than in a variable.
 
-const KEY = { armed: "armed", tabId: "lockedTabId", breaks: "breaks" };
+const KEY = { armed: "armed", engaged: "engaged", tabId: "lockedTabId", breaks: "breaks" };
 
 async function get() {
   return chrome.storage.local.get({
     [KEY.armed]: false,
+    [KEY.engaged]: false,
     [KEY.tabId]: null,
     [KEY.breaks]: 0,
   });
@@ -25,17 +26,47 @@ async function get() {
 
 /** Arming pins the current tab. That pin is what "back" means later. */
 async function arm(tabId) {
-  await chrome.storage.local.set({ [KEY.armed]: true, [KEY.tabId]: tabId, [KEY.breaks]: 0 });
+  await chrome.storage.local.set({
+    [KEY.armed]: true,
+    [KEY.engaged]: false,
+    [KEY.tabId]: tabId,
+    [KEY.breaks]: 0,
+  });
 }
 
 async function disarm() {
-  await chrome.storage.local.set({ [KEY.armed]: false, [KEY.tabId]: null });
+  await chrome.storage.local.set({
+    [KEY.armed]: false,
+    [KEY.engaged]: false,
+    [KEY.tabId]: null,
+  });
+}
+
+/**
+ * Disarm requested from the popup or the keyboard shortcut, rather than from
+ * the wall's hold. Refused once the lock has engaged.
+ *
+ * Enforced here and not only by greying the toggle, because the popup is a page
+ * the user can open devtools on. A rule that lives only in the UI is a
+ * suggestion.
+ */
+async function requestDisarm() {
+  const s = await get();
+  if (!LatchPersuade.canDisarmFromPopup({ armed: s[KEY.armed], engaged: s[KEY.engaged] })) {
+    return false;
+  }
+  await disarm();
+  return true;
 }
 
 chrome.commands.onCommand.addListener(async (command) => {
   if (command !== "toggle-lock") return;
   const s = await get();
-  if (s[KEY.armed]) return disarm();
+  if (s[KEY.armed]) {
+    // Same rule as the popup: the shortcut cannot undo an engaged lock either.
+    await requestDisarm();
+    return;
+  }
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (tab?.id != null) await arm(tab.id);
 });
@@ -47,8 +78,17 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (msg?.type === "arm") {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       if (tab?.id != null) await arm(tab.id);
+      sendResponse({ ok: true });
+      return;
     } else if (msg?.type === "disarm") {
+      const ok = await requestDisarm();
+      sendResponse({ ok, reason: ok ? null : "engaged" });
+      return;
+    } else if (msg?.type === "release") {
+      // The wall's completed hold. The one route allowed to end an engaged lock.
       await disarm();
+      sendResponse({ ok: true });
+      return;
     }
     sendResponse({ ok: true });
   })();
