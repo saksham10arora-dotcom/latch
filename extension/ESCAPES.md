@@ -45,6 +45,7 @@ each of these costs enough to not be a reflex.
 | Closing the whole window | Distinguished from closing a tab via `isWindowClosing`, and not fought. Fighting a window close means fighting a quit. |
 | Incognito, or another Chrome profile | The extension is not loaded there. Worth knowing rather than pretending. |
 | Another browser entirely | Nothing here can see it. |
+| **Other extensions** | An extension cannot act on another extension. Their toolbar buttons and Chrome's side panel are browser chrome: a page cannot see them, receive their clicks, or cover them, exactly like the tab strip. `chrome.management.setEnabled` technically exists, but reaching for "Manage your apps, extensions and themes" at install so a focus timer can switch off your other software is hostile, and would be the most invasive permission in the extension by a wide margin. Not doing it. |
 
 ## Load order, which is its own class of bug
 
@@ -81,6 +82,17 @@ they check `chrome.runtime?.id` and go quiet instead.
 The lesson for both: a guard that fires but fails is indistinguishable from a
 guard that never ran, and neither shows up anywhere except the extension's own
 error page. Check it before theorising.
+
+## In-page layering
+
+What another extension puts *into the page* is winnable, and is handled.
+`z-index` alone does not settle it: two elements both at the maximum are ordered
+by their position in the DOM, so whatever is appended last is on top. The wall
+keeps itself as the last child of `<html>` while it is up, and re-adds itself if
+something removes it.
+
+That is the whole extent of it. Anything an extension renders outside the page
+is out of reach, and pretending otherwise would be worse than saying so.
 
 ## Rules every guard follows
 

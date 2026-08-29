@@ -219,6 +219,10 @@ diff /etc/hosts /tmp/h                   # must print nothing
 - **Cmd-Tab is not covered.** macOS handles it before Chrome sees the key.
 - **Incognito needs a toggle.** Allow the extension in incognito, or a private
   window is a clean way out.
+- **Other extensions are outside the boundary.** An extension cannot act on
+  another extension, and toolbar buttons and the side panel are browser chrome
+  that no page can reach. What another extension injects *into* the page is
+  handled; what it renders outside one is not.
 - **A determined person gets around all of it.** Latch raises the cost of a
   distraction. It is not a prison, and it should not be.
 

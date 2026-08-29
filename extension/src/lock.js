@@ -78,6 +78,7 @@
         <p class="latch-hint"></p>
       </div>`;
     document.documentElement.appendChild(root);
+    keepOnTop(root);
 
     // Back is a real click, which is a user gesture, which is the only context
     // where requestFullscreen() is allowed to work. This is why the wall has a
@@ -123,6 +124,32 @@
 
     root.querySelector(".latch-phrase").addEventListener("input", refreshHint);
     return root;
+  }
+
+  /**
+   * Keep the wall the last element in the document while it is up.
+   *
+   * Other extensions inject into this page too, and z-index alone does not
+   * settle it: two elements both at the maximum are ordered by their position
+   * in the DOM, so whatever is appended last wins. Anything that arrives after
+   * the wall would otherwise sit on top of it.
+   *
+   * Also re-adds the wall if something removes it outright. Neither is
+   * adversarial, sites and extensions rearrange the DOM constantly, but the
+   * result is the same either way: a wall you can see past is not a wall.
+   *
+   * This only covers what lives in the page. An extension's toolbar button and
+   * Chrome's side panel are browser chrome, and nothing here can reach them.
+   * See ESCAPES.md.
+   */
+  function keepOnTop(root) {
+    const observer = new MutationObserver(() => {
+      if (!overlay) { observer.disconnect(); return; }
+      const html = document.documentElement;
+      if (!root.isConnected) { html.appendChild(root); return; }
+      if (html.lastElementChild !== root) html.appendChild(root);
+    });
+    observer.observe(document.documentElement, { childList: true });
   }
 
   const phraseValue = () => overlay?.querySelector(".latch-phrase")?.value ?? "";
