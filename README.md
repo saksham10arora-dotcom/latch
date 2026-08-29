@@ -26,6 +26,39 @@ Blocking websites needs one admin password prompt per session, because
 `/etc/hosts` is root-owned. There is no background daemon and nothing installed
 outside the app bundle.
 
+## Lecture mode, part two: the in-page lock
+
+The macOS focus lock below stops you leaving the **browser**. It cannot stop you
+leaving **full screen**, because that happens inside the page, where a native app
+cannot see.
+
+`extension/` is a Chrome extension that handles that half. Arm it with **Cmd-Shift-L**
+while a lecture is playing, and leaving full screen raises a wall over the whole
+page instead of giving you YouTube back.
+
+Getting out is a **hold**, not a click, defaulting to eight seconds, optionally
+with a phrase to type as well. Letting go resets the timer, so it cannot be
+chipped away at in half-second bursts. The video pauses behind the wall, because
+otherwise the lecture plays on while you are not watching it.
+
+### What is actually enforceable
+
+Escape **cannot** be cancelled. Exiting full screen on Escape is user-agent
+behaviour: the keydown fires, but `preventDefault()` does not stop the exit. No
+extension can hold a video in full screen against that key, and any that claims
+to is doing what this one does.
+
+Re-entering is gated too. `requestFullscreen()` only runs inside a user gesture,
+so nothing can silently put you back.
+
+So the design lets the exit happen and answers it in the same frame: the wall
+covers the page before the video is visible again, and its **Back to the lecture**
+button is a real click, which is the user gesture `requestFullscreen()` needs.
+
+The video is not literally trapped. What is true is that leaving buys you
+nothing, and the cheapest way out of the wall is back into the lecture. Full
+reasoning in `extension/NOTES.md`.
+
 ## Lecture mode: the focus lock
 
 Blocking `youtube.com` cannot help when the lecture **is** on YouTube. So the
