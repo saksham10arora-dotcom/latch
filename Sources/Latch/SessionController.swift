@@ -15,10 +15,18 @@ final class SessionController: ObservableObject {
     @Published var staleBlockFound = false
     @Published private(set) var history: [SessionRecord] = HistoryStore.load()
 
+    /// Raised by the focus lock; the window layer watches this to show the wall.
+    @Published private(set) var locked = false
+    @Published private(set) var nudge: Nudge?
+    /// Driven from both the main window and the lock wall, so the escape sheet
+    /// is presented from one place regardless of where it was asked for.
+    @Published var showEscape = false
+
     private var ticker: Timer?
     private var endsAt: Date?
     private var startedAt: Date?
     private let appBlocker = AppBlocker()
+    private let focusGuard = FocusGuard()
 
     init() {
         staleBlockFound = HostsBlocker.hasStaleBlock()
@@ -62,6 +70,11 @@ final class SessionController: ObservableObject {
         }
 
         appBlocker.start(bundleIDs: targets.bundleIDs)
+        if preset.locksFocus {
+            focusGuard.start(allowedApps: preset.allowedApps) { [weak self] _ in
+                self?.raiseLock()
+            }
+        }
         activePreset = preset
         startedAt = Date()
         endsAt = Date().addingTimeInterval(Double(preset.minutes * 60))
@@ -86,10 +99,55 @@ final class SessionController: ObservableObject {
     /// Ends the session and undoes everything. `completed` only changes the
     /// message; the teardown is identical either way, because an escape that
     /// left websites blocked would be worse than no escape at all.
+    // MARK: - Focus lock
+
+    /// Called when you switch to an app this session does not allow.
+    private func raiseLock() {
+        guard running, !locked else { return }
+        nudge = Persuasion.nudge(
+            for: Persuasion.Context(
+                minutesElapsed: elapsedMinutes,
+                minutesRemaining: Int(remaining) / 60,
+                streak: streak,
+                presetName: activePreset?.name ?? "This session"
+            )
+        )
+        locked = true
+    }
+
+    var elapsedMinutes: Int {
+        guard let began = startedAt else { return 0 }
+        return Int(Date().timeIntervalSince(began)) / 60
+    }
+
+    /// Puts you back in the app the session is locked to. If that app is gone,
+    /// the wall stays down rather than pretending the return worked.
+    func returnToSession() {
+        guard let preset = activePreset else { locked = false; return }
+        locked = false
+        FocusGuard.returnTo(preset.allowedApps)
+    }
+
+    /// The wall's exit. Lowers the wall so the escape sheet is visible and
+    /// interactive; the sheet still enforces the preset's wait and phrase, so
+    /// this is a route to the escape policy, not around it.
+    func requestEscapeFromLock() {
+        locked = false
+        showEscape = true
+        // The wall was covering the main window; bring it back or the sheet
+        // would open behind full-screen video with no way to reach it.
+        NSApp.activate(ignoringOtherApps: true)
+        NSApp.windows.first { $0.canBecomeKey && !($0.level == .screenSaver) }?
+            .makeKeyAndOrderFront(nil)
+    }
+
     func finish(completed: Bool) {
         ticker?.invalidate()
         ticker = nil
         appBlocker.stop()
+        focusGuard.stop()
+        locked = false
+        nudge = nil
 
         // Logged before teardown, so a failure to unblock still leaves a record
         // of the time actually spent.

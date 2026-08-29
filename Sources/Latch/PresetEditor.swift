@@ -71,6 +71,42 @@ struct PresetEditor: View {
                     }
                 }
 
+                field("Focus lock") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Tick the apps this session is allowed to be in. Switch to anything else and a full screen wall appears. Leave all unticked for no lock.")
+                            .font(.system(size: 11))
+                            .foregroundStyle(Theme.muted)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        // Same trick as the block-list editor: offer what is
+                        // running rather than asking anyone to type a bundle ID.
+                        ForEach(AppBlocker.runningCandidates(), id: \.bundleID) { app in
+                            Toggle(isOn: allowBinding(app.bundleID)) {
+                                Text("\(app.name)  ").font(.system(size: 12))
+                                + Text(app.bundleID)
+                                    .font(.system(size: 10, design: .monospaced))
+                                    .foregroundColor(Theme.muted)
+                            }
+                            .toggleStyle(.checkbox)
+                        }
+
+                        let offline = preset.allowedApps.filter { id in
+                            !AppBlocker.runningCandidates().contains { $0.bundleID == id }
+                        }
+                        if !offline.isEmpty {
+                            Text("Also allowed when running: \(offline.joined(separator: ", "))")
+                                .font(.system(size: 10, design: .monospaced))
+                                .foregroundStyle(Theme.muted)
+                        }
+
+                        if preset.locksFocus {
+                            Text("Locked. Leaving these apps raises the wall.")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(Theme.warn)
+                        }
+                    }
+                }
+
                 field("Ending early") {
                     VStack(alignment: .leading, spacing: 10) {
                         Picker("", selection: $kind) {
@@ -128,6 +164,17 @@ struct PresetEditor: View {
                 .foregroundStyle(Theme.ink)
             content()
         }
+    }
+
+    private func allowBinding(_ bundleID: String) -> Binding<Bool> {
+        Binding(
+            get: { preset.allowedApps.contains(bundleID) },
+            set: { on in
+                var ids = Set(preset.allowedApps)
+                if on { ids.insert(bundleID) } else { ids.remove(bundleID) }
+                preset.allowedApps = ids.sorted()
+            }
+        )
     }
 
     private func binding(for listName: String) -> Binding<Bool> {

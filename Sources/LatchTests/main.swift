@@ -226,4 +226,90 @@ T.test("appending accumulates rather than overwriting") {
     T.equal(after.count, 2, "second append clobbered the first")
 }
 
+print("\nPersuasion")
+
+func ctx(elapsed: Int = 10, remaining: Int = 30, streak: Int = 0, preset: String = "Lecture") -> Persuasion.Context {
+    Persuasion.Context(minutesElapsed: elapsed, minutesRemaining: remaining, streak: streak, presetName: preset)
+}
+
+T.test("never returns empty copy, whatever the context") {
+    // The lock screen has no fallback: whatever this returns is what the user
+    // reads at the exact moment they are trying to quit.
+    for e in [0, 1, 5, 20, 59] {
+        for r in [0, 1, 2, 3, 30] {
+            for s in [0, 1, 2, 3, 40] {
+                let n = Persuasion.nudge(for: ctx(elapsed: e, remaining: r, streak: s))
+                T.check(!n.headline.isEmpty, "empty headline at e=\(e) r=\(r) s=\(s)")
+                T.check(!n.body.isEmpty, "empty body at e=\(e) r=\(r) s=\(s)")
+            }
+        }
+    }
+}
+
+T.test("the almost-done case beats everything else") {
+    let n = Persuasion.nudge(for: ctx(elapsed: 58, remaining: 1, streak: 30))
+    T.check(n.headline.contains("Two minutes"), "should lead with how little is left")
+}
+
+T.test("a real streak gets named with the actual number") {
+    let n = Persuasion.nudge(for: ctx(elapsed: 10, remaining: 30, streak: 17))
+    T.check(n.headline.contains("17"), "streak copy should use the real number")
+}
+
+T.test("a streak under three is not worth invoking") {
+    let n = Persuasion.nudge(for: ctx(elapsed: 5, remaining: 40, streak: 2))
+    T.check(!n.headline.contains("2 days"), "a two day streak is not leverage")
+}
+
+T.test("time already spent gets named once it is substantial") {
+    let n = Persuasion.nudge(for: ctx(elapsed: 34, remaining: 20, streak: 0))
+    T.check(n.headline.contains("34"), "should name the elapsed minutes")
+}
+
+T.test("copy is stable within a minute so the screen does not flicker") {
+    let a = Persuasion.nudge(for: ctx(elapsed: 7, remaining: 30))
+    let b = Persuasion.nudge(for: ctx(elapsed: 7, remaining: 30))
+    T.equal(a, b, "same context gave different copy")
+}
+
+T.test("copy varies across attempts so it does not go stale") {
+    var seen = Set<String>()
+    for e in 0..<12 { seen.insert(Persuasion.nudge(for: ctx(elapsed: e, remaining: 30)).headline) }
+    T.check(seen.count >= 3, "only \(seen.count) distinct lines across 12 minutes")
+}
+
+print("\nFocus lock")
+
+T.test("a preset with no allowed apps does not lock focus") {
+    let p = Preset(name: "p", minutes: 30, blockListNames: [], escape: .none)
+    T.check(!p.locksFocus, "empty allowedApps should mean no lock")
+}
+
+T.test("the default Lecture preset locks to a browser") {
+    let lecture = LatchConfig.default.presets.first { $0.name == "Lecture" }!
+    T.check(lecture.locksFocus, "Lecture is the preset that most needs the lock")
+    T.check(lecture.allowedApps.contains("com.google.Chrome"), "Chrome should be allowed")
+}
+
+T.test("no other default preset locks focus") {
+    for p in LatchConfig.default.presets where p.name != "Lecture" {
+        T.check(!p.locksFocus, "\(p.name) should not lock focus by default")
+    }
+}
+
+T.test("a config written before allowedApps existed still decodes") {
+    // The real regression risk: shipping this would otherwise reset a user's
+    // saved presets to defaults on first launch after the update.
+    let legacy = """
+    {"blockLists":[],"presets":[{"blockListNames":["social"],"escape":{"none":{}},
+    "minutes":45,"name":"Old"}]}
+    """.data(using: .utf8)!
+    if let decoded = try? JSONDecoder().decode(LatchConfig.self, from: legacy) {
+        T.equal(decoded.presets.first?.name, "Old", "legacy preset lost")
+        T.equal(decoded.presets.first?.allowedApps ?? ["x"], [], "allowedApps should default to empty")
+    } else {
+        T.check(false, "a pre-allowedApps config failed to decode")
+    }
+}
+
 T.finish()

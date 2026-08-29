@@ -3,6 +3,7 @@ import SwiftUI
 @main
 struct LatchApp: App {
     @StateObject private var controller = SessionController()
+    @State private var presenter: LockPresenter?
 
     var body: some Scene {
         WindowGroup("Latch") {
@@ -15,6 +16,11 @@ struct LatchApp: App {
             }
             .frame(minWidth: 560, minHeight: 500)
             .preferredColorScheme(.dark)
+            .onAppear {
+                // One presenter for the app's lifetime, created once the
+                // controller exists rather than at init.
+                if presenter == nil { presenter = LockPresenter(controller: controller) }
+            }
         }
         .windowResizability(.contentSize)
 

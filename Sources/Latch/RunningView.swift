@@ -5,7 +5,6 @@ import LatchCore
 /// that you are not looking at it.
 struct RunningView: View {
     @ObservedObject var controller: SessionController
-    @State private var showEscape = false
 
     var body: some View {
         VStack(spacing: 28) {
@@ -47,7 +46,7 @@ struct RunningView: View {
 
             Spacer()
 
-            Button("End session early") { showEscape = true }
+            Button("End session early") { controller.showEscape = true }
                 .buttonStyle(.plain)
                 .font(.system(size: 12))
                 .foregroundStyle(Theme.muted)
@@ -55,14 +54,19 @@ struct RunningView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.bg)
-        .sheet(isPresented: $showEscape) {
+        .sheet(isPresented: $controller.showEscape) {
             EscapeSheet(
                 policy: controller.activePreset?.escape ?? .none,
                 onRelease: {
-                    showEscape = false
+                    controller.showEscape = false
                     controller.finish(completed: false)
                 },
-                onCancel: { showEscape = false }
+                onCancel: {
+                    controller.showEscape = false
+                    // Cancelling from the wall should put you back where you
+                    // were, not leave you staring at Latch.
+                    controller.returnToSession()
+                }
             )
         }
     }

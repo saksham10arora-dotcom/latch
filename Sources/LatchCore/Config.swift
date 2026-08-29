@@ -52,12 +52,45 @@ public struct Preset: Codable, Identifiable, Hashable {
     public var blockListNames: [String]
     public var escape: EscapePolicy
 
-    public init(name: String, minutes: Int, blockListNames: [String], escape: EscapePolicy) {
+    /// Bundle IDs you are allowed to be in for this session. Empty means no
+    /// focus lock at all, which is the right default: most sessions want their
+    /// blocklists and nothing more.
+    ///
+    /// When it is non-empty, switching to anything else raises the lock screen.
+    /// That is what makes Lecture mode work: blocking domains cannot help when
+    /// the distraction and the lecture live at the same domain.
+    public var allowedApps: [String]
+
+    public init(
+        name: String,
+        minutes: Int,
+        blockListNames: [String],
+        escape: EscapePolicy,
+        allowedApps: [String] = []
+    ) {
         self.name = name
         self.minutes = minutes
         self.blockListNames = blockListNames
         self.escape = escape
+        self.allowedApps = allowedApps
     }
+
+    // Decoded with a default so a config.json written before the focus lock
+    // existed still loads instead of silently resetting to defaults.
+    private enum CodingKeys: String, CodingKey {
+        case name, minutes, blockListNames, escape, allowedApps
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        name = try c.decode(String.self, forKey: .name)
+        minutes = try c.decode(Int.self, forKey: .minutes)
+        blockListNames = try c.decode([String].self, forKey: .blockListNames)
+        escape = try c.decode(EscapePolicy.self, forKey: .escape)
+        allowedApps = try c.decodeIfPresent([String].self, forKey: .allowedApps) ?? []
+    }
+
+    public var locksFocus: Bool { !allowedApps.isEmpty }
 }
 
 public struct LatchConfig: Codable {
@@ -125,8 +158,13 @@ public struct LatchConfig: Codable {
                 name: "Lecture",
                 minutes: 60,
                 // Video stays reachable on purpose: the lecture is on YouTube.
+                // Which is also why this is the one preset that locks focus. A
+                // domain blocklist cannot separate the lecture from the rest of
+                // the browser, so the lock works on the app instead: leave the
+                // browser and the lock screen appears.
                 blockListNames: ["social", "chat", "games"],
-                escape: .wait(seconds: 30)
+                escape: .wait(seconds: 30),
+                allowedApps: ["com.google.Chrome", "com.apple.Safari"]
             ),
             Preset(
                 name: "Sprint",

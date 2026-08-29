@@ -26,6 +26,41 @@ Blocking websites needs one admin password prompt per session, because
 `/etc/hosts` is root-owned. There is no background daemon and nothing installed
 outside the app bundle.
 
+## Lecture mode: the focus lock
+
+Blocking `youtube.com` cannot help when the lecture **is** on YouTube. So the
+`Lecture` preset locks on the **app** instead: name the browser you are watching
+in, switch to anything else, and a full-screen wall appears on every display,
+above full-screen video, with the dock and menu bar hidden.
+
+The wall is not a trap. It carries two buttons: **Back to it**, which returns you
+to the lecture, and **End the session**, which routes through the same escape
+policy as the main window, wait and phrase included. If Latch dies, the wall dies
+with it.
+
+It also **argues with you**. The wall picks the most pointed thing it can say
+given the moment: how many minutes you have already spent, how long the streak
+is, or how little is left. The copy is deliberately unflattering rather than
+motivational, because motivational copy stops working on the second reading:
+
+> **You do not want to leave.**
+> You want to not be bored for ten seconds. Those are different things, and only
+> one of them is worth the session you are about to end.
+
+Any session can lock, not just `Lecture`. Tick the allowed apps under **Focus
+lock** in the session editor; leave them all unticked for no lock.
+
+### What it does and does not stop
+
+It answers an app switch rather than preventing one. Cmd-Tab still works, and
+about a quarter of a second later the wall is in front of you.
+
+Preventing the switch outright would need an Accessibility event tap, which means
+granting Latch the ability to read every keystroke on the machine. That is a very
+large permission for a small gain, and it is not worth it. For the same reason
+Latch does not detect leaving full screen *within* the allowed app, only leaving
+the app.
+
 ## The escape hatch
 
 An escape you can reach in one click is not friction, and a session you cannot
@@ -99,7 +134,7 @@ or was never installed.
 
 ```bash
 swift build            # build
-swift run LatchTests   # 30 tests, exits non-zero on failure
+swift run LatchTests   # 41 tests, exits non-zero on failure
 bash scripts/build-app.sh
 ```
 
