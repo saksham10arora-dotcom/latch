@@ -74,3 +74,26 @@ chrome.commands.getAll((commands) => {
     tip.classList.add("warn");
   }
 });
+
+
+// Ask the worker to describe itself. If this comes back empty the worker is not
+// running at all, which is the difference between "the guard has a bug" and
+// "the guard was never registered".
+chrome.runtime.sendMessage({ type: "diagnostics" }, (d) => {
+  const el = $("diag");
+  if (chrome.runtime.lastError || !d) {
+    el.textContent =
+      "service worker did NOT respond.\n" +
+      "Tab guards cannot run. Open chrome://extensions, click\n" +
+      "'service worker' under Lecture Lock and read the error.";
+    return;
+  }
+  el.textContent = [
+    `worker alive     ${d.workerAlive}`,
+    `armed            ${d.armed}`,
+    `engaged          ${d.engaged}`,
+    `pinned tab       ${d.pinnedTab ?? "none"}${d.pinnedTab != null && !d.pinnedTabAlive ? "  (GONE)" : ""}`,
+    `tabs permission  ${d.hasTabsPermission}`,
+    `times caught     ${d.breaks}`,
+  ].join("\n");
+});

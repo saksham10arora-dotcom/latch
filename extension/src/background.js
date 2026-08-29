@@ -1,5 +1,29 @@
-importScripts("persuade.js");
-/* global LatchPersuade */
+// No importScripts here, deliberately.
+//
+// A service worker registers its listeners by running top to bottom. If
+// anything above a listener throws, that listener is never registered and the
+// feature silently does not exist: no error surfaces on the page, the guard
+// simply never fires. Depending on a second file to load before
+// chrome.tabs.onActivated is registered puts the single most important guard in
+// the extension behind an avoidable failure.
+//
+// So the three values the worker needs are inlined instead. They are small, and
+// the copy is asserted against the real module by the test suite.
+
+const WORKER_DEFAULTS = {
+  armed: false,
+  engaged: false,
+  holdSeconds: 8,
+  phrase: "",
+  strict: false,
+  breaks: 0,
+};
+
+/** Mirror of LatchPersuade.canDisarmFromPopup. Kept in step by a test. */
+function canDisarmFromPopup({ armed = false, engaged = false } = {}) {
+  if (!armed) return true;
+  return !engaged;
+}
 
 // Tab switching is two separate problems and needs two separate answers.
 //
@@ -76,7 +100,7 @@ async function disarm() {
  */
 async function requestDisarm() {
   const s = await get();
-  if (!LatchPersuade.canDisarmFromPopup({ armed: s[KEY.armed], engaged: s[KEY.engaged] })) {
+  if (!canDisarmFromPopup({ armed: s[KEY.armed], engaged: s[KEY.engaged] })) {
     return false;
   }
   await disarm();
@@ -248,15 +272,39 @@ chrome.tabs.onUpdated.addListener(async (tabId, change) => {
 });
 
 chrome.runtime.onInstalled.addListener(async () => {
-  const current = await chrome.storage.local.get(LatchPersuade.DEFAULTS);
+  const current = await chrome.storage.local.get(WORKER_DEFAULTS);
   // Never restore an armed state on install or update: a lock nobody chose is
   // indistinguishable from a broken browser.
   await chrome.storage.local.set({
-    ...LatchPersuade.DEFAULTS,
+    ...WORKER_DEFAULTS,
     ...current,
     [KEY.armed]: false,
     [KEY.engaged]: false,
     [KEY.tabId]: null,
     [KEY.url]: null,
   });
+});
+
+// Lets the popup prove the worker is alive and show the live state. Guessing at
+// why a guard did not fire wasted two rounds; this makes it answerable in one
+// screenshot.
+chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  if (msg?.type !== "diagnostics") return;
+  (async () => {
+    const s = await get();
+    let pinnedTabAlive = false;
+    if (s[KEY.tabId] != null) {
+      try { await chrome.tabs.get(s[KEY.tabId]); pinnedTabAlive = true; } catch { /* gone */ }
+    }
+    sendResponse({
+      workerAlive: true,
+      armed: s[KEY.armed],
+      engaged: s[KEY.engaged],
+      pinnedTab: s[KEY.tabId],
+      pinnedTabAlive,
+      hasTabsPermission: typeof chrome.tabs?.onActivated?.addListener === "function",
+      breaks: s[KEY.breaks],
+    });
+  })();
+  return true;
 });

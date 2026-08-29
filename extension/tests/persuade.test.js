@@ -221,3 +221,46 @@ describe("the wall and full screen are one lock, not lock and aftermath", () => 
     expect(P.canDisarmFromPopup({ armed: true, engaged: false })).toBe(true);
   });
 });
+
+describe("worker copy stays in step with the module", () => {
+  // background.js deliberately inlines these instead of calling importScripts,
+  // so that a load failure cannot stop chrome.tabs.onActivated being
+  // registered. The cost of that choice is duplication, and this keeps it
+  // honest. Comments are stripped first, since the file explains at length why
+  // it avoids importScripts and matching that explanation is not a test.
+  const fs = require("node:fs");
+  const worker = fs.readFileSync(new URL("../src/background.js", import.meta.url), "utf8");
+  const code = worker
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .split("\n")
+    .filter((line) => !line.trim().startsWith("//"))
+    .join("\n");
+
+  it("does not reintroduce a load-time dependency before the listeners", () => {
+    expect(code).not.toMatch(/importScripts\s*\(/);
+  });
+
+  it("registers the tab guard that the snap-back depends on", () => {
+    expect(code).toMatch(/chrome\.tabs\.onActivated\.addListener/);
+    expect(code).toMatch(/chrome\.tabs\.onRemoved\.addListener/);
+    expect(code).toMatch(/chrome\.windows\.onFocusChanged\.addListener/);
+  });
+
+  it("inlines every default the module declares", () => {
+    const block = code.match(/const WORKER_DEFAULTS = \{[\s\S]*?\}/)[0];
+    for (const key of Object.keys(P.DEFAULTS)) {
+      expect(block, `WORKER_DEFAULTS is missing ${key}`).toContain(key);
+    }
+  });
+
+  it("its disarm rule agrees with the module's on every input", () => {
+    const body = code.match(/function canDisarmFromPopup\([\s\S]*?\n\}/)[0];
+    const workerFn = new Function(`${body}; return canDisarmFromPopup;`)();
+    for (const armed of [true, false]) {
+      for (const engaged of [true, false]) {
+        expect(workerFn({ armed, engaged }), `armed=${armed} engaged=${engaged}`)
+          .toBe(P.canDisarmFromPopup({ armed, engaged }));
+      }
+    }
+  });
+});
