@@ -3,23 +3,43 @@
   "name": "Latch Lecture Lock",
   "version": "0.1.0",
   "description": "Pins a YouTube lecture in full screen. Leaving costs you a deliberate act, not a keypress.",
-  "permissions": ["storage"],
-  "host_permissions": ["*://*.youtube.com/*"],
+  "permissions": [
+    "storage",
+    "tabs"
+  ],
+  "host_permissions": [
+    "*://*.youtube.com/*"
+  ],
   "content_scripts": [
     {
-      "matches": ["*://*.youtube.com/*"],
-      "js": ["src/persuade.js", "src/lock.js"],
-      "css": ["src/lock.css"],
+      "matches": [
+        "*://*.youtube.com/*"
+      ],
+      "js": [
+        "src/persuade.js",
+        "src/lock.js"
+      ],
+      "css": [
+        "src/lock.css"
+      ],
       "run_at": "document_idle",
       "all_frames": false
     }
   ],
-  "action": { "default_popup": "src/popup.html", "default_title": "Lecture Lock" },
+  "action": {
+    "default_popup": "src/popup.html",
+    "default_title": "Lecture Lock"
+  },
   "commands": {
     "toggle-lock": {
-      "suggested_key": { "default": "Ctrl+Shift+L", "mac": "Command+Shift+L" },
+      "suggested_key": {
+        "default": "Ctrl+Shift+L",
+        "mac": "Command+Shift+L"
+      },
       "description": "Arm or disarm the lecture lock"
     }
   },
-  "background": { "service_worker": "src/background.js" }
+  "background": {
+    "service_worker": "src/background.js"
+  }
 }

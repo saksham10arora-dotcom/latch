@@ -124,7 +124,10 @@
     clearInterval(holdTimer);
     holdTimer = null;
     state.armed = false;
-    chrome.storage.local.set({ armed: false });
+    releaseKeyboardLock();
+    // Through the worker, so the pinned tab is cleared in the same step the
+    // lock is dropped. Setting storage directly would leave a stale pin behind.
+    chrome.runtime.sendMessage({ type: "disarm" }).catch(() => {});
     down();
   }
 
@@ -148,15 +151,35 @@
    * It must be re-taken every time full screen is entered, because leaving full
    * screen releases it automatically.
    */
+  // Keys the browser would otherwise act on itself. Locking them means the
+  // shortcut does nothing at all, rather than being undone a moment later by
+  // the service worker snapping the tab back.
+  //
+  // Named by physical code, not character, which is what the API takes: Cmd-1
+  // is Digit1 plus a modifier. Deliberately a list rather than lock() with no
+  // arguments, since locking every key would also swallow ordinary typing.
+  const LOCKED_KEYS = [
+    "Escape",
+    "KeyT", "KeyW", "KeyN",              // new tab, close tab, new window
+    "Tab",                                // Ctrl-Tab / Cmd-Alt-arrow cycling
+    "Digit1", "Digit2", "Digit3", "Digit4",
+    "Digit5", "Digit6", "Digit7", "Digit8", "Digit9",
+  ];
+
   async function takeKeyboardLock() {
     if (!navigator.keyboard?.lock) return false;
     try {
-      await navigator.keyboard.lock(["Escape"]);
+      await navigator.keyboard.lock(LOCKED_KEYS);
       return true;
     } catch {
-      // Denied or unsupported. The wall still covers the exit, so the lock
-      // degrades to the old behaviour instead of failing open.
-      return false;
+      // Denied or unsupported. Escape then falls through to the wall, and tab
+      // switches to the service worker, so this degrades rather than fails open.
+      try {
+        await navigator.keyboard.lock(["Escape"]);
+        return true;
+      } catch {
+        return false;
+      }
     }
   }
 
@@ -183,6 +206,23 @@
       if (e.key === "f" || e.key === "F") {
         e.preventDefault();
         e.stopPropagation();
+        return;
+      }
+
+      // Tab and window shortcuts. Only swallowed when a modifier is down, so
+      // typing a "t" into the search box still works normally.
+      const mod = e.metaKey || e.ctrlKey;
+      if (!mod) return;
+      const isTabShortcut =
+        e.code === "KeyT" ||
+        e.code === "KeyW" ||
+        e.code === "KeyN" ||
+        e.code === "Tab" ||
+        /^Digit[1-9]$/.test(e.code);
+      if (isTabShortcut) {
+        e.preventDefault();
+        e.stopPropagation();
+        toast("Locked in. That shortcut is off until you unlock.");
       }
     },
     true
@@ -232,13 +272,13 @@
    * and hiding the hold-Escape route would be dishonest: the browser prompts
    * for it anyway.
    */
-  function toast() {
+  function toast(message) {
     if (!toastEl) {
       toastEl = document.createElement("div");
       toastEl.id = "latch-toast";
       document.documentElement.appendChild(toastEl);
     }
-    toastEl.textContent = "Locked in. Hold Esc to force out, and the wall is waiting.";
+    toastEl.textContent = message || "Locked in. Hold Esc to force out, and the wall is waiting.";
     toastEl.classList.add("on");
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => toastEl?.classList.remove("on"), 2200);

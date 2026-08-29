@@ -12,14 +12,16 @@ chrome.storage.local.get(D, (s) => {
 
 function status(armed) {
   $("status").textContent = armed
-    ? "Armed. Escape is swallowed; a 2s hold forces out."
+    ? "Armed. Escape and tab switching are off."
     : "Off. Go full screen, then arm it.";
 }
 
 // Arming resets the counter so the "that is 4 times" copy is about this
 // lecture, not a tally carried over from yesterday.
+// Routed through the worker so arming pins the current tab, which is what the
+// snap-back later treats as "back".
 $("armed").addEventListener("change", (e) => {
-  chrome.storage.local.set({ armed: e.target.checked, breaks: 0 });
+  chrome.runtime.sendMessage({ type: e.target.checked ? "arm" : "disarm" });
   status(e.target.checked);
 });
 $("holdSeconds").addEventListener("change", (e) =>

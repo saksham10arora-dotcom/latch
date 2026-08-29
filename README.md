@@ -55,8 +55,32 @@ stopped outright by capture-phase handlers.
 | Press Escape | Keyboard Lock swallows it |
 | `f` key | keydown intercepted |
 | Player's full screen button | click intercepted |
+| Cmd-T, Cmd-W, Cmd-N, Cmd-1..9, Ctrl-Tab | Keyboard Lock, then keydown intercepted |
+| **Clicking another tab** | Not preventable. The worker switches you back. |
+| Switching browser window | Same, the worker refocuses the lecture |
 | **Hold Escape ~2s** | **Cannot be blocked.** The wall catches the exit. |
 | Close the tab | `beforeunload` prompt in strict mode |
+
+### Tab switching
+
+Two halves, because they fail differently.
+
+**Keyboard** is stopped outright. Keyboard Lock covers `KeyT`, `KeyW`, `KeyN`,
+`Tab` and `Digit1`-`Digit9`, so Chrome never acts on the shortcut, and the
+keydown handler swallows it only when a modifier is down, leaving ordinary typing
+alone.
+
+**The mouse is not stoppable.** The tab strip is browser chrome and no page can
+see a click on it. So arming pins the current tab, and the service worker puts
+you back the moment you land anywhere else. You get the switch and lose it again
+inside a frame.
+
+A genuinely blank new tab gets closed, since by definition it holds nothing to
+lose. Anything opened with a real URL is left alone and merely deactivated:
+closing a tab because someone fat-fingered a shortcut would be its own bug.
+
+Closing the lecture tab always disarms. Otherwise every later switch would snap
+toward a tab that no longer exists.
 
 That last row is a deliberate browser guarantee and no API can remove it. It is
 also the right line: a page able to trap someone in full screen with no way out
