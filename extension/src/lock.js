@@ -308,7 +308,14 @@
   });
 
   chrome.storage.onChanged.addListener((changes) => {
+    const wasArmed = state.armed;
     for (const [k, { newValue }] of Object.entries(changes)) state[k] = newValue;
+
+    // Only an actual flip of `armed` is an arming decision. Without this, the
+    // breaks counter that up() writes re-entered this handler and tore the wall
+    // down immediately after raising it.
+    if (!P.isArmingChange(changes, wasArmed)) return;
+
     if (!state.armed) {
       engaged = false;
       releaseKeyboardLock();

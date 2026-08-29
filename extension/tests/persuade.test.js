@@ -99,3 +99,43 @@ describe("defaults", () => {
     expect(P.DEFAULTS.holdSeconds).toBeGreaterThanOrEqual(5);
   });
 });
+
+describe("isArmingChange", () => {
+  // Regression: raising the wall writes a breaks counter, which fired the
+  // storage listener, which saw "armed and windowed" and tore the wall down a
+  // frame after it went up. The wall was destroyed by its own side effect.
+  it("ignores the breaks counter the wall itself writes", () => {
+    expect(P.isArmingChange({ breaks: { newValue: 3 } }, true)).toBe(false);
+  });
+
+  it("ignores the pinned tab id moving", () => {
+    expect(P.isArmingChange({ lockedTabId: { newValue: 42 } }, true)).toBe(false);
+  });
+
+  it("reacts when arming", () => {
+    expect(P.isArmingChange({ armed: { newValue: true } }, false)).toBe(true);
+  });
+
+  it("reacts when disarming", () => {
+    expect(P.isArmingChange({ armed: { newValue: false } }, true)).toBe(true);
+  });
+
+  it("ignores a rewrite of armed to the value it already had", () => {
+    expect(P.isArmingChange({ armed: { newValue: true } }, true)).toBe(false);
+  });
+
+  it("ignores an armed key bundled with others when nothing flipped", () => {
+    // arm() writes armed, lockedTabId and breaks in one call.
+    expect(
+      P.isArmingChange(
+        { armed: { newValue: true }, lockedTabId: { newValue: 7 }, breaks: { newValue: 0 } },
+        true
+      )
+    ).toBe(false);
+  });
+
+  it("survives an empty or missing change set", () => {
+    expect(P.isArmingChange({}, true)).toBe(false);
+    expect(P.isArmingChange(undefined, true)).toBe(false);
+  });
+});

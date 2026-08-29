@@ -100,7 +100,25 @@
     return true;
   }
 
-  const api = { DEFAULTS, NUDGES, nudge, unlockReady };
+  /**
+   * Should a chrome.storage change re-run the arm/disarm logic?
+   *
+   * Only when the `armed` flag itself flipped. This exists because of a real
+   * bug: raising the wall bumps a `breaks` counter in storage, which fired the
+   * change listener, which saw "armed and not in full screen" and tore the wall
+   * back down a frame after it appeared. The wall was being built and destroyed
+   * by the same event.
+   *
+   * Keys that move during a normal session (breaks, lockedTabId) must therefore
+   * never be treated as an arming decision.
+   */
+  function isArmingChange(changes, wasArmed) {
+    if (!changes || !("armed" in changes)) return false;
+    const now = changes.armed.newValue;
+    return now !== wasArmed;
+  }
+
+  const api = { DEFAULTS, NUDGES, nudge, unlockReady, isArmingChange };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   root.LatchPersuade = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);
