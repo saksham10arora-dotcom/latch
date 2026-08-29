@@ -210,6 +210,20 @@ diff /etc/hosts /tmp/h                   # must print nothing
 
 ---
 
+## Publishing it
+
+```bash
+bash scripts/package-extension.sh   # -> build/latch-lecture-lock.zip
+```
+
+Only what the manifest references goes in; `node_modules`, tests and notes are
+left out, since the store rejects unused files and reviewers read whatever you
+send them.
+
+[`assets/store/LISTING.md`](assets/store/LISTING.md) has the description,
+category, and the permission justifications written out. Those justifications
+are what a review turns on, and `tabs` is the one they read closely.
+
 ## Known limits
 
 - **macOS and Chrome.** The blocking is `/etc/hosts`, `NSWorkspace` and MV3.

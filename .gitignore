@@ -1,5 +1,6 @@
+
+*.xcodeproj
+.DS_Store
 .build/
 build/
-.DS_Store
-*.xcodeproj
 extension/node_modules/
