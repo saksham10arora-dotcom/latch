@@ -61,21 +61,33 @@
     const root = document.createElement("div");
     root.id = "latch-wall";
     root.innerHTML = `
-      <div class="latch-rail"><span class="latch-rail-fill"></span></div>
-      <div class="latch-inner">
-        <p class="latch-meta"></p>
-        <p class="latch-title"></p>
-        <h1 class="latch-head"></h1>
-        <p class="latch-body"></p>
-        <div class="latch-actions">
-          <button class="latch-back" type="button">Back to the lecture</button>
-          <button class="latch-out" type="button">
-            <span class="latch-fill"></span>
-            <span class="latch-out-label">Hold to unlock</span>
-          </button>
+      <div class="latch-aurora" aria-hidden="true"></div>
+      <div class="latch-stage">
+        <div class="latch-inner">
+          <p class="latch-meta" style="--d:0ms"></p>
+          <p class="latch-title" style="--d:60ms"></p>
+          <h1 class="latch-head" style="--d:120ms"></h1>
+          <p class="latch-body" style="--d:200ms"></p>
+          <div class="latch-actions" style="--d:280ms">
+            <button class="latch-back" type="button">Back to the lecture</button>
+            <button class="latch-out" type="button">
+              <span class="latch-fill"></span>
+              <span class="latch-out-label">Hold to unlock</span>
+            </button>
+          </div>
+          <input class="latch-phrase" type="text" placeholder="type the phrase" style="--d:340ms" hidden>
+          <p class="latch-hint" style="--d:340ms"></p>
         </div>
-        <input class="latch-phrase" type="text" placeholder="type the phrase" hidden>
-        <p class="latch-hint"></p>
+        <div class="latch-gauge" style="--d:160ms" aria-hidden="true">
+          <svg viewBox="0 0 260 260">
+            <circle class="latch-track" cx="130" cy="130" r="112"></circle>
+            <circle class="latch-arc" cx="130" cy="130" r="112"></circle>
+          </svg>
+          <div class="latch-gauge-face">
+            <span class="latch-pct">0<i>%</i></span>
+            <span class="latch-gauge-label">of this lecture done</span>
+          </div>
+        </div>
       </div>`;
     document.documentElement.appendChild(root);
     keepOnTop(root);
@@ -184,9 +196,20 @@
     // how much of this lecture you have already sat through. A sentence saying
     // "34 minutes in" is an argument; a bar that is two thirds full is a fact.
     const done = watchedFraction();
-    overlay.querySelector(".latch-rail-fill").style.width = `${(done * 100).toFixed(2)}%`;
-    // One frame later so the transition has a start state to animate from.
-    requestAnimationFrame(() => overlay?.classList.add("is-in"));
+    const pct = Math.round(done * 100);
+    const arc = overlay.querySelector(".latch-arc");
+    const CIRC = 2 * Math.PI * 112;
+    arc.style.strokeDasharray = `${CIRC}`;
+    arc.style.strokeDashoffset = `${CIRC}`;   // start empty, then draw to value
+    overlay.querySelector(".latch-pct").innerHTML = `0<i>%</i>`;
+
+    requestAnimationFrame(() => {
+      overlay?.classList.add("is-in");
+      // Drawing the arc rather than snapping it is the point: watching it fill
+      // to where you already are is the argument, and it reads as earned.
+      arc.style.strokeDashoffset = `${CIRC * (1 - done)}`;
+      countUp(overlay.querySelector(".latch-pct"), pct);
+    });
     const phrase = overlay.querySelector(".latch-phrase");
     phrase.hidden = !state.phrase;
     held = 0;
@@ -252,6 +275,25 @@
     // engaged, and this is the one route that is allowed through.
     tell({ type: "release" });
     down();
+  }
+
+  /** Ticks the percentage up to its real value alongside the arc drawing. */
+  function countUp(el, target) {
+    if (target <= 0) { el.innerHTML = `0<i>%</i>`; return; }
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches) {
+      el.innerHTML = `${target}<i>%</i>`;
+      return;
+    }
+    const start = performance.now();
+    const dur = 900;
+    const step = (now) => {
+      const t = Math.min(1, (now - start) / dur);
+      // Same easing as the arc, so the number and the ring move as one thing.
+      const eased = 1 - Math.pow(1 - t, 3);
+      el.innerHTML = `${Math.round(target * eased)}<i>%</i>`;
+      if (t < 1 && overlay) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
   }
 
   /** How far through the lecture you already are, 0 to 1. */
