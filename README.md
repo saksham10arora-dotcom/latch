@@ -57,6 +57,16 @@ back to the wall rather than to YouTube. Letting go resets the timer, so it cann
 chipped away at in half-second bursts. The video pauses behind the wall, because
 otherwise the lecture plays on while you are not watching it.
 
+### Every way out, written down
+
+`extension/ESCAPES.md` is the full audit: each route, what closes it, and which
+ones are deliberately left open. The governing rule is that **full screen and the
+wall are two states of one lock**, not lock and aftermath. Most bypasses found so
+far came from gating a guard on `inFullscreen()`, which is false exactly when the
+wall is up, leaving the wall screen the least protected part of the whole thing.
+
+### What is actually enforceable
+
 ### Escape does nothing
 
 `navigator.keyboard.lock(["Escape"])` is the mechanism. It is the same

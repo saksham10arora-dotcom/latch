@@ -198,3 +198,26 @@ describe("shouldRaiseWallOnLoad", () => {
     expect(P.shouldRaiseWallOnLoad()).toBe(false);
   });
 });
+
+describe("the wall and full screen are one lock, not lock and aftermath", () => {
+  // Most bypasses so far came from gating a guard on being in full screen. The
+  // wall is shown precisely when full screen is gone, so that condition
+  // disabled every in-page guard at the exact moment the wall was on screen.
+  // These pin the shape the guards must share rather than the DOM wiring.
+
+  it("an engaged lock stays engaged after full screen ends", () => {
+    // shouldRaiseWallOnLoad is the same predicate the load path uses, and it
+    // must treat "engaged and windowed" as locked, never as finished.
+    expect(P.shouldRaiseWallOnLoad({ armed: true, engaged: true, inFullscreen: false })).toBe(true);
+  });
+
+  it("the popup still refuses while the wall is up", () => {
+    // Being out of full screen must not soften the disarm rule either.
+    expect(P.canDisarmFromPopup({ armed: true, engaged: true })).toBe(false);
+  });
+
+  it("nothing is enforced before the lock ever engaged", () => {
+    expect(P.shouldRaiseWallOnLoad({ armed: true, engaged: false, inFullscreen: false })).toBe(false);
+    expect(P.canDisarmFromPopup({ armed: true, engaged: false })).toBe(true);
+  });
+});

@@ -203,7 +203,10 @@
   document.addEventListener(
     "keydown",
     (e) => {
-      if (!state.armed || !inFullscreen()) return;
+      // Gate on the lock being engaged, not on full screen. The wall is shown
+      // precisely when full screen is gone, so the old condition disabled every
+      // in-page guard at the exact moment the wall was on screen.
+      if (!state.armed || !engaged) return;
 
       // With the lock held this is where Escape arrives instead of exiting.
       // Swallowing it silently would read as a broken page, so it gets a brief,
@@ -248,7 +251,7 @@
   document.addEventListener(
     "click",
     (e) => {
-      if (!state.armed || !inFullscreen()) return;
+      if (!state.armed || !engaged) return;
       const button = e.target?.closest?.(".ytp-fullscreen-button, .ytp-size-button");
       if (!button) return;
       e.preventDefault();
@@ -303,6 +306,23 @@
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => toastEl?.classList.remove("on"), 2200);
   }
+
+  // Second, independent detector for the tab losing focus.
+  //
+  // tabs.onActivated in the worker is the primary one, but an MV3 service
+  // worker is killed and restarted constantly, so making it the only path makes
+  // it a single point of failure. This fires inside the page, which is alive for
+  // as long as the tab is, and needs no worker to notice anything.
+  document.addEventListener("visibilitychange", () => {
+    if (!state.armed || !engaged) return;
+    if (document.visibilityState !== "hidden") return;
+    chrome.runtime.sendMessage({ type: "snapback" }).catch(() => {});
+  });
+
+  window.addEventListener("blur", () => {
+    if (!state.armed || !engaged) return;
+    chrome.runtime.sendMessage({ type: "snapback" }).catch(() => {});
+  });
 
   // --- wiring --------------------------------------------------------------
 

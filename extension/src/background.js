@@ -13,6 +13,14 @@ importScripts("persuade.js");
 // The service worker can be killed and restarted at any time, so every piece of
 // state it needs lives in chrome.storage rather than in a variable.
 
+const onYouTube = (url) => {
+  try {
+    return /(^|\.)youtube\.com$/.test(new URL(url).hostname);
+  } catch {
+    return false;
+  }
+};
+
 const KEY = {
   armed: "armed",
   engaged: "engaged",
@@ -100,6 +108,13 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       const ok = await requestDisarm();
       sendResponse({ ok, reason: ok ? null : "engaged" });
       return;
+    } else if (msg?.type === "snapback") {
+      // Sent by the page when it loses focus. Cheap, and independent of
+      // tabs.onActivated ever firing.
+      const s = await get();
+      if (s[KEY.armed] && s[KEY.engaged]) await snapBack("page-blur");
+      sendResponse({ ok: true });
+      return;
     } else if (msg?.type === "release") {
       // The wall's completed hold. The one route allowed to end an engaged lock.
       await disarm();
@@ -159,9 +174,45 @@ chrome.tabs.onCreated.addListener(async (tab) => {
 
 // Losing the lecture tab is the one thing that must always disarm, otherwise
 // every later tab switch snaps toward a tab that no longer exists.
-chrome.tabs.onRemoved.addListener(async (tabId) => {
+chrome.tabs.onRemoved.addListener(async (tabId, info) => {
   const s = await get();
-  if (s[KEY.armed] && tabId === s[KEY.tabId]) await disarm();
+  if (!s[KEY.armed] || tabId !== s[KEY.tabId]) return;
+
+  // Closing the whole window is not fought. Fighting it means fighting a quit,
+  // and a lock that reopens windows during shutdown is a malfunction.
+  if (info?.isWindowClosing) {
+    await disarm();
+    return;
+  }
+
+  // Before it engaged, closing the tab is just closing a tab.
+  const back = s[KEY.url];
+  if (!s[KEY.engaged] || !back || !onYouTube(back)) {
+    await disarm();
+    return;
+  }
+
+  // Cmd-W then Cmd-Shift-T used to be a two key bypass: closing the tab
+  // disarmed the lock, and reopening it came back unlocked. Reopen it ourselves
+  // and re-pin, so closing the lecture costs the same as any other exit.
+  try {
+    const tab = await chrome.tabs.create({ url: back, active: true });
+    if (tab?.id != null) {
+      await chrome.storage.local.set({
+        [KEY.tabId]: tab.id,
+        [KEY.breaks]: (s[KEY.breaks] || 0) + 1,
+      });
+      return;
+    }
+  } catch { /* fall through */ }
+  // Could not reopen. Disarm rather than hold a lock pointing at nothing.
+  await disarm();
+});
+
+// A new window is another way to land somewhere the lock is not looking.
+chrome.windows.onCreated.addListener(async () => {
+  const s = await get();
+  if (s[KEY.armed] && s[KEY.engaged]) snapBack("window-created");
 });
 
 chrome.windows.onFocusChanged.addListener(async (windowId) => {
@@ -175,14 +226,6 @@ chrome.windows.onFocusChanged.addListener(async (windowId) => {
     await disarm();
   }
 });
-
-const onYouTube = (url) => {
-  try {
-    return /(^|\.)youtube\.com$/.test(new URL(url).hostname);
-  } catch {
-    return false;
-  }
-};
 
 /**
  * The locked tab leaving YouTube.
