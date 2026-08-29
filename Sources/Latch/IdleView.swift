@@ -12,9 +12,26 @@ struct IdleView: View {
                     Text("Latch")
                         .font(.system(size: 20, weight: .bold))
                         .foregroundStyle(Theme.ink)
-                    Text("Pick a session. Nothing starts until you do.")
-                        .font(.system(size: 12))
-                        .foregroundStyle(Theme.muted)
+                    // Only shown once there is something to show. A "0 day
+                    // streak" on first launch is a worse greeting than nothing.
+                    if controller.streak > 0 || controller.minutesToday > 0 {
+                        HStack(spacing: 6) {
+                            if controller.streak > 0 {
+                                Text("\(controller.streak) day streak")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundStyle(Theme.accent)
+                            }
+                            if controller.minutesToday > 0 {
+                                Text("· \(controller.minutesToday) min today")
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(Theme.muted)
+                            }
+                        }
+                    } else {
+                        Text("Pick a session. Nothing starts until you do.")
+                            .font(.system(size: 12))
+                            .foregroundStyle(Theme.muted)
+                    }
                 }
                 Spacer()
                 Button("Customize") { showSettings = true }

@@ -40,15 +40,37 @@ Per preset, pick one of:
 - `waitThenPhrase(seconds:phrase:)` — both
 - `none` — honest about being a nudge
 
+## In the menu bar
+
+The countdown sits next to the clock, so you can close the window for the whole
+session. The menu starts any session without opening the app.
+
+Ending early deliberately is **not** in the menu. Making the exit one click from
+the menu bar would undo the friction the escape policy exists to create.
+
+## Streaks
+
+Finished sessions are logged to `history.json`, and the idle screen shows a day
+streak plus minutes focused today.
+
+A session you ended early **does not** keep a streak alive. A number is only
+worth looking at if it is hard to get, and "I started something" is not hard.
+Today being empty does not break the streak either, since the day is not over;
+the count just starts from yesterday.
+
+Time from abandoned sessions still counts toward minutes today. You did the
+minutes, even if you did not finish.
+
 ## Customizing
 
 Everything is editable in **Customize**, and the same state is plain JSON at
 `~/Library/Application Support/Latch/config.json` if you would rather use an
 editor.
 
+- **Sessions** are a name, a duration, a set of block lists, and an escape
+  policy. Add and delete them freely; Latch will not let you delete the last one.
 - **Block lists** are named sets of websites and apps. Write `social` once, use
-  it in three presets.
-- **Presets** are a duration, a set of block lists, and an escape policy.
+  it in three sessions.
 - Apps are picked from what is **currently running**, so you never look up a
   bundle identifier by hand.
 
@@ -77,7 +99,7 @@ or was never installed.
 
 ```bash
 swift build            # build
-swift run LatchTests   # 19 tests, exits non-zero on failure
+swift run LatchTests   # 30 tests, exits non-zero on failure
 bash scripts/build-app.sh
 ```
 
@@ -102,6 +124,9 @@ diff /etc/hosts /tmp/h     # must print nothing
 - **macOS only.** The blocking is `/etc/hosts` plus `NSWorkspace`; neither ports.
 - **Not notarized.** Ad-hoc signed, so it runs on this machine. Shipping to
   anyone else needs a Developer ID.
+- **`strings` cannot verify a Swift build.** Literals of 15 bytes or fewer are
+  inlined into code by the small-string optimization and never reach the strings
+  table. Check a long literal, or the tests.
 - **A determined person gets around it.** You can edit `/etc/hosts` yourself in
   another terminal. Latch raises the cost of a distraction; it is not a prison.
 - **A VPN or DNS-over-HTTPS can bypass the hosts file** for websites. App

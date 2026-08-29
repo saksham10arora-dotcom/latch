@@ -148,4 +148,82 @@ T.test("the default Lecture preset leaves video reachable") {
     T.check(domains.contains("reddit.com"), "lecture preset should still block social")
 }
 
+print("\nHistory")
+
+let cal = Calendar(identifier: .gregorian)
+let today = cal.startOfDay(for: Date())
+func day(_ offset: Int) -> Date { cal.date(byAdding: .day, value: offset, to: today)! }
+func rec(_ offset: Int, completed: Bool = true, minutes: Int = 30) -> SessionRecord {
+    SessionRecord(presetName: "p", startedAt: day(offset).addingTimeInterval(3600),
+                  plannedMinutes: minutes, actualSeconds: minutes * 60, completed: completed)
+}
+
+T.test("no sessions is a zero streak") {
+    T.equal(History.streak(in: [], today: today, calendar: cal), 0, "empty history should be 0")
+}
+
+T.test("counts consecutive completed days") {
+    let r = [rec(0), rec(-1), rec(-2)]
+    T.equal(History.streak(in: r, today: today, calendar: cal), 3, "three straight days")
+}
+
+T.test("a gap ends the streak") {
+    let r = [rec(0), rec(-1), rec(-3)]
+    T.equal(History.streak(in: r, today: today, calendar: cal), 2, "day -2 missing should stop it")
+}
+
+T.test("today being empty does not break a live streak") {
+    // 9am on a day you have not studied yet should not read as a broken streak.
+    let r = [rec(-1), rec(-2)]
+    T.equal(History.streak(in: r, today: today, calendar: cal), 2, "grace day missing")
+}
+
+T.test("an abandoned session does not keep a streak alive") {
+    let r = [rec(0, completed: false), rec(-1)]
+    // yesterday completed, today only abandoned -> grace applies, streak is 1
+    T.equal(History.streak(in: r, today: today, calendar: cal), 1, "early exit should not count")
+}
+
+T.test("two sessions in one day still count as one day") {
+    let r = [rec(0), rec(0), rec(-1)]
+    T.equal(History.streak(in: r, today: today, calendar: cal), 2, "same day double counted")
+}
+
+T.test("minutes today sums only today") {
+    let r = [rec(0, minutes: 25), rec(0, minutes: 35), rec(-1, minutes: 90)]
+    T.equal(History.minutesToday(in: r, today: today, calendar: cal), 60, "wrong daily total")
+}
+
+T.test("minutes today counts abandoned sessions, because the time was still spent") {
+    let r = [rec(0, completed: false, minutes: 10)]
+    T.equal(History.minutesToday(in: r, today: today, calendar: cal), 10, "abandoned time not counted")
+}
+
+T.test("completion rate is nil with no history rather than a fake zero") {
+    T.check(History.completionRate(in: []) == nil, "should be nil, not 0")
+    T.equal(History.completionRate(in: [rec(0), rec(-1, completed: false)]), 0.5, "wrong rate")
+}
+
+T.test("history survives a save and load round trip") {
+    // The bug this catches: setting a date strategy on the encoder but not the
+    // decoder writes a file that silently reads back as empty.
+    let tmp = URL(fileURLWithPath: NSTemporaryDirectory())
+        .appendingPathComponent("latch-history-\(UUID().uuidString).json")
+    defer { try? FileManager.default.removeItem(at: tmp) }
+    let written = HistoryStore.append(rec(0), to: tmp)
+    T.equal(written.count, 1, "append did not return the record")
+    let reloaded = HistoryStore.load(from: tmp)
+    T.equal(reloaded.count, 1, "history did not survive the round trip")
+    T.equal(reloaded.first?.presetName, "p", "record came back wrong")
+}
+
+T.test("appending accumulates rather than overwriting") {
+    let tmp = URL(fileURLWithPath: NSTemporaryDirectory())
+        .appendingPathComponent("latch-history-\(UUID().uuidString).json")
+    defer { try? FileManager.default.removeItem(at: tmp) }
+    HistoryStore.append(rec(-1), to: tmp)
+    let after = HistoryStore.append(rec(0), to: tmp)
+    T.equal(after.count, 2, "second append clobbered the first")
+}
+
 T.finish()

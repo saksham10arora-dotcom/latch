@@ -13,13 +13,25 @@ final class SessionController: ObservableObject {
     @Published var errorMessage: String?
     /// Set at launch when a previous run left a block behind.
     @Published var staleBlockFound = false
+    @Published private(set) var history: [SessionRecord] = HistoryStore.load()
 
     private var ticker: Timer?
     private var endsAt: Date?
+    private var startedAt: Date?
     private let appBlocker = AppBlocker()
 
     init() {
         staleBlockFound = HostsBlocker.hasStaleBlock()
+    }
+
+    var streak: Int { History.streak(in: history) }
+    var minutesToday: Int { History.minutesToday(in: history) }
+
+    /// What the menu bar shows. Short on purpose: it sits next to the clock.
+    var menuBarLabel: String {
+        guard running else { return "Latch" }
+        let total = max(0, Int(remaining))
+        return String(format: "%d:%02d", total / 60, total % 60)
     }
 
     var progress: Double {
@@ -51,6 +63,7 @@ final class SessionController: ObservableObject {
 
         appBlocker.start(bundleIDs: targets.bundleIDs)
         activePreset = preset
+        startedAt = Date()
         endsAt = Date().addingTimeInterval(Double(preset.minutes * 60))
         remaining = Double(preset.minutes * 60)
         running = true
@@ -77,6 +90,20 @@ final class SessionController: ObservableObject {
         ticker?.invalidate()
         ticker = nil
         appBlocker.stop()
+
+        // Logged before teardown, so a failure to unblock still leaves a record
+        // of the time actually spent.
+        if let preset = activePreset, let began = startedAt {
+            history = HistoryStore.append(
+                SessionRecord(
+                    presetName: preset.name,
+                    startedAt: began,
+                    plannedMinutes: preset.minutes,
+                    actualSeconds: Int(Date().timeIntervalSince(began)),
+                    completed: completed
+                )
+            )
+        }
         do {
             try HostsBlocker.clear()
         } catch {
@@ -86,6 +113,7 @@ final class SessionController: ObservableObject {
         }
         running = false
         activePreset = nil
+        startedAt = nil
         endsAt = nil
         remaining = 0
     }
