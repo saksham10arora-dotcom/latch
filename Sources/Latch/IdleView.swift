@@ -119,6 +119,18 @@ private struct PresetRow: View {
                     Text("\(targets.domains.count) sites, \(targets.bundleIDs.count) apps · \(escapeLabel)")
                         .font(.system(size: 11))
                         .foregroundStyle(Theme.muted)
+                    // A focus lock that is configured off looks identical to one
+                    // that is broken. Saying so is the difference between "this
+                    // app does not work" and "I have not switched this on".
+                    if preset.locksFocus {
+                        Text("locked to \(preset.allowedApps.count) app\(preset.allowedApps.count == 1 ? "" : "s") · leaving raises the wall")
+                            .font(.system(size: 11))
+                            .foregroundStyle(Theme.accent)
+                    } else {
+                        Text("no focus lock · Cmd-Tab is not guarded")
+                            .font(.system(size: 11))
+                            .foregroundStyle(Theme.warn)
+                    }
                 }
                 Spacer()
                 Button("Start", action: start)
