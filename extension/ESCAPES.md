@@ -61,6 +61,27 @@ ads and swapped-in elements included.
 Anything else that touches the page on load should assume the same: the page is
 not finished, and whatever you did may need doing again.
 
+## Failures that look like the guard was never there
+
+Two real ones, both silent, both found only by reading chrome://extensions.
+
+**`Tabs cannot be edited right now (user may be dragging a tab)`.**
+`chrome.tabs.update` rejects during the transient state right after a tab is
+clicked, which is exactly when the snap-back runs. A single call rejected, the
+rejection went unhandled, and the tab switch stood. The guard was firing
+correctly the whole time and losing at the last step. It retries with a backoff
+now, and gives up rather than spinning.
+
+**`Extension context invalidated`.** Reloading the extension orphans every
+content script already running in an open tab: the page keeps executing the old
+code, but every `chrome.*` call from it throws. Unguarded, that made each of the
+script's own handlers a source of uncaught errors. Orphans cannot be revived, so
+they check `chrome.runtime?.id` and go quiet instead.
+
+The lesson for both: a guard that fires but fails is indistinguishable from a
+guard that never ran, and neither shows up anywhere except the extension's own
+error page. Check it before theorising.
+
 ## Rules every guard follows
 
 1. **Default to not enforcing.** Missing or unreadable state must never wall

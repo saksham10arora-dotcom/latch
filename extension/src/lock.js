@@ -19,6 +19,42 @@
   const video = () => document.querySelector("video.html5-main-video, video");
   const inFullscreen = () => !!document.fullscreenElement;
 
+  /**
+   * Is this content script still attached to a live extension?
+   *
+   * Reloading the extension orphans every content script already running in an
+   * open tab: the page keeps executing the old code, but every chrome.* call
+   * throws "Extension context invalidated". Unguarded, that turns each of this
+   * script's own handlers into a source of uncaught errors, and the wall stops
+   * being able to record anything.
+   *
+   * Nothing can revive an orphan, so the honest behaviour is to notice and go
+   * quiet rather than throw on every keystroke.
+   */
+  function alive() {
+    try {
+      return !!chrome.runtime?.id;
+    } catch {
+      return false;
+    }
+  }
+
+  /** chrome.storage from a content script, safe against the orphan case. */
+  function store(patch) {
+    if (!alive()) return;
+    try {
+      chrome.storage.local.set(patch);
+    } catch { /* orphaned between the check and the call */ }
+  }
+
+  /** chrome.runtime.sendMessage, same treatment. */
+  function tell(message) {
+    if (!alive()) return;
+    try {
+      chrome.runtime.sendMessage(message)?.catch?.(() => {});
+    } catch { /* orphaned */ }
+  }
+
   // --- overlay -------------------------------------------------------------
 
   function build() {
@@ -118,7 +154,7 @@
     // miss the part you were supposed to be watching.
     silence();
     state.breaks += 1;
-    chrome.storage.local.set({ breaks: state.breaks });
+    store({ breaks: state.breaks });
   }
 
   /**
@@ -173,7 +209,7 @@
     releaseKeyboardLock();
     // "release", not "disarm": the worker refuses a disarm once the lock has
     // engaged, and this is the one route that is allowed through.
-    chrome.runtime.sendMessage({ type: "release" }).catch(() => {});
+    tell({ type: "release" });
     down();
   }
 
@@ -302,7 +338,7 @@
       engaged = true;
       // Published so the popup can grey its toggle out and the worker can
       // refuse a disarm from anywhere except the wall.
-      chrome.storage.local.set({ engaged: true });
+      store({ engaged: true });
       down();
       takeKeyboardLock();
     } else {
@@ -351,16 +387,19 @@
   document.addEventListener("visibilitychange", () => {
     if (!state.armed || !engaged) return;
     if (document.visibilityState !== "hidden") return;
-    chrome.runtime.sendMessage({ type: "snapback" }).catch(() => {});
+    tell({ type: "snapback" });
   });
 
   window.addEventListener("blur", () => {
     if (!state.armed || !engaged) return;
-    chrome.runtime.sendMessage({ type: "snapback" }).catch(() => {});
+    tell({ type: "snapback" });
   });
 
   // --- wiring --------------------------------------------------------------
 
+  // Guarded like the rest: a script loaded into an already-orphaned context
+  // would otherwise throw here and never wire anything up.
+  if (!alive()) return;
   chrome.storage.local.get(P.DEFAULTS, (stored) => {
     state = { ...P.DEFAULTS, ...stored };
     // Rehydrate from storage. A reload builds a brand new content script, so a
@@ -370,7 +409,7 @@
 
     if (state.armed && inFullscreen()) {
       engaged = true;
-      chrome.storage.local.set({ engaged: true });
+      store({ engaged: true });
       takeKeyboardLock();
     } else if (P.shouldRaiseWallOnLoad({ armed: state.armed, engaged, inFullscreen: false })) {
       // Came back from a reload or a navigation that dropped full screen. The
@@ -396,7 +435,7 @@
       // Armed mid-lecture, already full screen: take the lock now rather than
       // waiting for the next transition, which may never come.
       engaged = true;
-      chrome.storage.local.set({ engaged: true });
+      store({ engaged: true });
       takeKeyboardLock();
       toast("Locked in. Escape and tab switching are off.");
     } else {

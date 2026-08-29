@@ -150,6 +150,30 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   return true; // keep the channel open for the async reply
 });
 
+/**
+ * Activate a tab, retrying while Chrome refuses.
+ *
+ * chrome.tabs.update rejects with "Tabs cannot be edited right now (user may be
+ * dragging a tab)" during the transient state right after a tab is clicked.
+ * That is exactly when the snap-back runs, so the single call rejected, the
+ * rejection was unhandled, and the switch stood. The guard was firing correctly
+ * the whole time and losing at the last step.
+ *
+ * Backs off over roughly a second, which outlasts the drag state, and gives up
+ * rather than looping: a snap-back that cannot land must not spin forever.
+ */
+async function activate(tabId, attempts = 6) {
+  for (let i = 0; i < attempts; i++) {
+    try {
+      await chrome.tabs.update(tabId, { active: true });
+      return true;
+    } catch {
+      await new Promise((r) => setTimeout(r, 60 + i * 60));
+    }
+  }
+  return false;
+}
+
 async function snapBack(reason) {
   const s = await get();
   if (!s[KEY.armed] || s[KEY.tabId] == null) return;
@@ -164,7 +188,8 @@ async function snapBack(reason) {
     return;
   }
 
-  await chrome.tabs.update(target.id, { active: true });
+  const activated = await activate(target.id);
+  if (!activated) return; // could not put them back; do not count it as a catch
   if (target.windowId != null) {
     await chrome.windows.update(target.windowId, { focused: true }).catch(() => {});
   }

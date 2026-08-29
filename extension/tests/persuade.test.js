@@ -264,3 +264,33 @@ describe("worker copy stays in step with the module", () => {
     }
   });
 });
+
+describe("resilience of the two calls that were actually failing", () => {
+  const fs = require("node:fs");
+  const worker = fs.readFileSync(new URL("../src/background.js", import.meta.url), "utf8");
+  const content = fs.readFileSync(new URL("../src/lock.js", import.meta.url), "utf8");
+
+  it("retries activating a tab instead of letting the rejection stand", () => {
+    // "Tabs cannot be edited right now (user may be dragging a tab)" is thrown
+    // by chrome.tabs.update during the transient state right after a tab is
+    // clicked, which is exactly when the snap-back runs. A single call loses.
+    expect(worker).toMatch(/async function activate\(/);
+    expect(worker).toMatch(/for \(let i = 0; i < attempts; i\+\+\)/);
+    expect(worker).not.toMatch(/await chrome\.tabs\.update\(target\.id/);
+  });
+
+  it("gives up rather than looping forever when a tab cannot be activated", () => {
+    const body = worker.match(/async function activate\([\s\S]*?\n\}/)[0];
+    expect(body).toMatch(/return false;/);
+  });
+
+  it("routes content-script chrome calls through the orphan guards", () => {
+    // Reloading the extension orphans running content scripts; every chrome.*
+    // call then throws "Extension context invalidated".
+    expect(content).toMatch(/function alive\(\)/);
+    expect(content).toMatch(/chrome\.runtime\?\.id/);
+    // The only raw uses left are inside the guards themselves and the boot read.
+    const raw = content.match(/chrome\.(storage\.local\.set|runtime\.sendMessage)\(/g) || [];
+    expect(raw.length, "an unguarded chrome call crept back in").toBeLessThanOrEqual(2);
+  });
+});
