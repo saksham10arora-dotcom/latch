@@ -45,6 +45,11 @@ const onYouTube = (url) => {
   }
 };
 
+// True only while a Cmd-W replacement tab is being opened. Short-lived and
+// worker-local on purpose: it guards a sub-second window, and if the worker is
+// killed mid-reopen the worst case is one spurious snap-back.
+let reopening = false;
+
 const KEY = {
   armed: "armed",
   engaged: "engaged",
@@ -180,11 +185,17 @@ async function snapBack(reason) {
 
   // If the lecture tab is gone there is nothing to go back to, and holding the
   // lock would strand the user in a browser that keeps yanking them nowhere.
+  // A missing pinned tab is NOT a reason to disarm here.
+  //
+  // Closing the locked tab reopens it, and for a moment the pinned id points at
+  // the tab that just closed while the replacement is still being created. If
+  // snapBack disarmed on that, Cmd-W reopened the tab with the lock switched
+  // off, which made the reopen pointless. Only onRemoved decides whether a
+  // session is over; snapBack either puts you back or does nothing.
   let target;
   try {
     target = await chrome.tabs.get(s[KEY.tabId]);
   } catch {
-    await disarm();
     return;
   }
 
@@ -210,6 +221,9 @@ chrome.tabs.onActivated.addListener(async (info) => {
 chrome.tabs.onCreated.addListener(async (tab) => {
   const s = await get();
   if (!s[KEY.armed] || s[KEY.tabId] == null) return;
+
+  // The replacement we just opened after a Cmd-W is not somebody escaping.
+  if (reopening) return;
 
   // Close only a genuinely blank new tab, which by definition holds nothing to
   // lose. Anything opened with a real URL is left alone and merely deactivated:
@@ -244,16 +258,21 @@ chrome.tabs.onRemoved.addListener(async (tabId, info) => {
   // Cmd-W then Cmd-Shift-T used to be a two key bypass: closing the tab
   // disarmed the lock, and reopening it came back unlocked. Reopen it ourselves
   // and re-pin, so closing the lecture costs the same as any other exit.
+  reopening = true;
   try {
     const tab = await chrome.tabs.create({ url: back, active: true });
     if (tab?.id != null) {
+      // Re-pin before clearing the flag, so nothing observes a window where the
+      // lock is armed and pointing at a tab that no longer exists.
       await chrome.storage.local.set({
         [KEY.tabId]: tab.id,
         [KEY.breaks]: (s[KEY.breaks] || 0) + 1,
       });
+      reopening = false;
       return;
     }
   } catch { /* fall through */ }
+  reopening = false;
   // Could not reopen. Disarm rather than hold a lock pointing at nothing.
   await disarm();
 });
@@ -272,7 +291,9 @@ chrome.windows.onFocusChanged.addListener(async (windowId) => {
     const target = await chrome.tabs.get(s[KEY.tabId]);
     if (target.windowId !== windowId) snapBack("window");
   } catch {
-    await disarm();
+    // Same rule as snapBack: a momentarily missing tab is a reopen in flight,
+    // not the end of a session. Only onRemoved decides that.
+    return;
   }
 });
 

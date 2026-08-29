@@ -94,13 +94,30 @@ something removes it.
 That is the whole extent of it. Anything an extension renders outside the page
 is out of reach, and pretending otherwise would be worse than saying so.
 
+## Races, which is the third class
+
+Closing the locked tab reopens it. For a moment during that, the pinned tab id
+points at a tab that has already gone, and two other listeners see it: the
+snap-back, and the window-focus handler. Both treated a missing tab as "the
+session is over" and disarmed, so Cmd-W reopened the tab with the lock switched
+off and the reopen achieved nothing.
+
+The rule that came out of it: **exactly one place may end a session.** Guards put
+you back or do nothing. `onRemoved` alone decides a session is over, because it
+is the only one that can tell a close from a reopen in flight.
+
+The replacement tab is also flagged while it is being created, so the listener
+watching for new tabs does not read our own reopen as somebody escaping, and the
+new id is pinned before the flag clears so nothing observes an armed lock
+pointing at nothing.
+
 ## Rules every guard follows
 
 1. **Default to not enforcing.** Missing or unreadable state must never wall
    somebody who never armed anything.
-2. **Losing the target disarms rather than strands.** If the pinned tab cannot be
-   recovered, the lock ends. Snapping toward a tab that no longer exists is worse
-   than no lock.
+2. **Exactly one place may end a session.** `onRemoved` decides, and only after
+   trying to reopen. Every other guard puts you back or does nothing, because a
+   guard that can disarm becomes a way out the moment its timing is off.
 3. **Never destroy user data to enforce.** A blank new tab is closed; a tab with
    a real URL is only deactivated.
 4. **Enforce in the worker, not the UI.** The popup is a page anyone can open

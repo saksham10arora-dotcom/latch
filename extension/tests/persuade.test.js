@@ -294,3 +294,40 @@ describe("resilience of the two calls that were actually failing", () => {
     expect(raw.length, "an unguarded chrome call crept back in").toBeLessThanOrEqual(2);
   });
 });
+
+describe("only one thing may end a session", () => {
+  const fs = require("node:fs");
+  const worker = fs.readFileSync(new URL("../src/background.js", import.meta.url), "utf8");
+  const code = worker
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .split("\n")
+    .filter((l) => !l.trim().startsWith("//"))
+    .join("\n");
+
+  // Cmd-W closed the tab, the reopen began, and for a moment the pinned id
+  // pointed at the tab that had just closed. snapBack saw a missing tab and
+  // disarmed, so the tab came back with the lock off and Cmd-W stayed a bypass.
+  it("snapBack never disarms", () => {
+    const body = code.match(/async function snapBack\([\s\S]*?\n\}/)[0];
+    expect(body).not.toMatch(/disarm\(\)/);
+  });
+
+  it("the window focus handler never disarms either", () => {
+    const body = code.match(/chrome\.windows\.onFocusChanged\.addListener\([\s\S]*?\n\}\);/)[0];
+    expect(body).not.toMatch(/disarm\(\)/);
+  });
+
+  it("reopening after a close is flagged so it is not read as an escape", () => {
+    expect(code).toMatch(/let reopening = false;/);
+    const created = code.match(/chrome\.tabs\.onCreated\.addListener\([\s\S]*?\n\}\);/)[0];
+    expect(created).toMatch(/if \(reopening\) return;/);
+  });
+
+  it("re-pins the replacement tab before clearing the flag", () => {
+    const removed = code.match(/chrome\.tabs\.onRemoved\.addListener\([\s\S]*?\n\}\);/)[0];
+    const setIdx = removed.indexOf("chrome.storage.local.set");
+    const clearIdx = removed.indexOf("reopening = false");
+    expect(setIdx).toBeGreaterThan(-1);
+    expect(clearIdx).toBeGreaterThan(setIdx);
+  });
+});
