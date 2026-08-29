@@ -32,8 +32,16 @@ The macOS focus lock below stops you leaving the **browser**. It cannot stop you
 leaving **full screen**, because that happens inside the page, where a native app
 cannot see.
 
-`extension/` is a Chrome extension that handles that half. Arm it with **Cmd-Shift-L**
-while a lecture is playing, and Escape stops working.
+`extension/` is a Chrome extension that handles that half. Arm it with
+**Option-Shift-L** while a lecture is playing, and Escape stops working.
+
+Arming is deliberately harmless on its own: you can only reach the popup while
+windowed, so an armed-but-windowed lock just waits for full screen rather than
+treating you as though you had escaped from something.
+
+If the shortcut does nothing, another extension has claimed it. Chrome drops a
+contested `suggested_key` silently rather than reporting it. Set your own at
+`chrome://extensions/shortcuts`.
 
 Getting out is a **hold**, not a click, defaulting to eight seconds, optionally
 with a phrase to type as well. Letting go resets the timer, so it cannot be

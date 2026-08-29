@@ -5,6 +5,16 @@
   let overlay = null;
   let held = 0;
   let holdTimer = null;
+  /**
+   * Whether the lock has anything to protect yet.
+   *
+   * Arming happens from the popup, which you can only click while NOT in full
+   * screen. Treating "armed and windowed" as an escape attempt therefore threw
+   * the quit wall up the instant you armed it, which is exactly backwards. The
+   * wall belongs to *leaving* full screen, so it only fires once full screen has
+   * actually been entered at least once under this arming.
+   */
+  let engaged = false;
 
   const video = () => document.querySelector("video.html5-main-video, video");
   const inFullscreen = () => !!document.fullscreenElement;
@@ -124,6 +134,7 @@
     clearInterval(holdTimer);
     holdTimer = null;
     state.armed = false;
+    engaged = false;
     releaseKeyboardLock();
     // Through the worker, so the pinned tab is cleared in the same step the
     // lock is dropped. Setting storage directly would leave a stale pin behind.
@@ -246,11 +257,13 @@
   document.addEventListener("fullscreenchange", () => {
     if (!state.armed) return;
     if (inFullscreen()) {
+      engaged = true;
       down();
       takeKeyboardLock();
     } else {
       releaseKeyboardLock();
-      up();
+      // Only an exit counts. Never having been in full screen is not an escape.
+      if (engaged) up();
     }
   });
 
@@ -288,21 +301,29 @@
 
   chrome.storage.local.get(P.DEFAULTS, (stored) => {
     state = { ...P.DEFAULTS, ...stored };
-    if (state.armed && inFullscreen()) takeKeyboardLock();
-    if (state.armed && !inFullscreen()) up();
+    if (state.armed && inFullscreen()) {
+      engaged = true;
+      takeKeyboardLock();
+    }
   });
 
   chrome.storage.onChanged.addListener((changes) => {
     for (const [k, { newValue }] of Object.entries(changes)) state[k] = newValue;
     if (!state.armed) {
+      engaged = false;
       releaseKeyboardLock();
       down();
     } else if (inFullscreen()) {
       // Armed mid-lecture, already full screen: take the lock now rather than
-      // waiting for the next full screen transition that may never come.
+      // waiting for the next transition, which may never come.
+      engaged = true;
       takeKeyboardLock();
+      toast("Locked in. Escape and tab switching are off.");
     } else {
-      up();
+      // Armed from the popup, so necessarily windowed. Wait for full screen
+      // instead of raising the wall at someone who has not gone anywhere.
+      down();
+      toast("Armed. Go full screen and it locks.");
     }
   });
 })();
