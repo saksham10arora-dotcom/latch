@@ -172,6 +172,8 @@
   const LOCKED_KEYS = [
     "Escape",
     "KeyT", "KeyW", "KeyN",              // new tab, close tab, new window
+    "KeyR",                               // reload, which would otherwise reset everything
+    "KeyL",                               // focus the address bar
     "Tab",                                // Ctrl-Tab / Cmd-Alt-arrow cycling
     "Digit1", "Digit2", "Digit3", "Digit4",
     "Digit5", "Digit6", "Digit7", "Digit8", "Digit9",
@@ -228,6 +230,8 @@
         e.code === "KeyT" ||
         e.code === "KeyW" ||
         e.code === "KeyN" ||
+        e.code === "KeyR" ||
+        e.code === "KeyL" ||
         e.code === "Tab" ||
         /^Digit[1-9]$/.test(e.code);
       if (isTabShortcut) {
@@ -304,10 +308,19 @@
 
   chrome.storage.local.get(P.DEFAULTS, (stored) => {
     state = { ...P.DEFAULTS, ...stored };
+    // Rehydrate from storage. A reload builds a brand new content script, so a
+    // local variable would forget the lock was ever engaged, which is exactly
+    // what made Cmd-R a one-key bypass.
+    engaged = !!state.engaged;
+
     if (state.armed && inFullscreen()) {
       engaged = true;
       chrome.storage.local.set({ engaged: true });
       takeKeyboardLock();
+    } else if (P.shouldRaiseWallOnLoad({ armed: state.armed, engaged, inFullscreen: false })) {
+      // Came back from a reload or a navigation that dropped full screen. The
+      // reload was the escape attempt, so the wall is what greets it.
+      up();
     }
   });
 

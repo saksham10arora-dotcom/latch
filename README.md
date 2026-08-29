@@ -48,7 +48,12 @@ with a phrase to type as well. **The toolbar popup cannot end it once it has
 engaged**, and neither can the keyboard shortcut: the wall's hold is the only
 route through. Every exit has to cost the same thing, or the cheapest one is the
 only one anyone ever uses. Removing the extension still works, which is the
-deliberate floor under it. Letting go resets the timer, so it cannot be
+deliberate floor under it.
+
+Reloading used to be a one-key bypass, since a reload drops full screen and
+builds a fresh content script with no memory of the lock. Whether the lock has
+engaged therefore lives in storage rather than in a variable, so the page comes
+back to the wall rather than to YouTube. Letting go resets the timer, so it cannot be
 chipped away at in half-second bursts. The video pauses behind the wall, because
 otherwise the lecture plays on while you are not watching it.
 
@@ -70,6 +75,8 @@ stopped outright by capture-phase handlers.
 | Cmd-T, Cmd-W, Cmd-N, Cmd-1..9, Ctrl-Tab | Keyboard Lock, then keydown intercepted |
 | **Clicking another tab** | Not preventable. The worker switches you back. |
 | Switching browser window | Same, the worker refocuses the lecture |
+| Cmd-R reload | Keyboard Lock, and the wall is waiting if it happens anyway |
+| Typing another address | The worker sends the tab back to the lecture |
 | **Hold Escape ~2s** | **Cannot be blocked.** The wall catches the exit. |
 | Close the tab | `beforeunload` prompt in strict mode |
 

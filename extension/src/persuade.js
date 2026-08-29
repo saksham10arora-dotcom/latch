@@ -135,8 +135,26 @@
     return !engaged;
   }
 
+  /**
+   * On a fresh page load, should the wall be up?
+   *
+   * Yes when the lock was engaged and we are no longer in full screen, because
+   * that is precisely what a reload looks like from the other side. Reloading
+   * drops full screen and starts a brand new content script with no memory, so
+   * without this the page came back unlocked and Cmd-R was a one-key bypass
+   * around the whole ritual.
+   *
+   * `engaged` therefore has to survive in storage rather than living in a
+   * variable: the variable dies with the page, and the lock must not.
+   */
+  function shouldRaiseWallOnLoad({ armed = false, engaged = false, inFullscreen = false } = {}) {
+    if (!armed || !engaged) return false;
+    return !inFullscreen;
+  }
+
   const api = {
     DEFAULTS,
+    shouldRaiseWallOnLoad,
     NUDGES,
     nudge,
     unlockReady,

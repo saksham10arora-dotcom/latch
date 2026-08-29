@@ -170,3 +170,31 @@ describe("engaged default", () => {
     expect(P.DEFAULTS.engaged).toBe(false);
   });
 });
+
+describe("shouldRaiseWallOnLoad", () => {
+  // Regression: Cmd-R was a one-key bypass. Reloading drops full screen and
+  // builds a brand new content script, so a locally-held "engaged" flag was
+  // forgotten and the page came back completely unlocked.
+  it("raises the wall when an engaged lock comes back without full screen", () => {
+    expect(P.shouldRaiseWallOnLoad({ armed: true, engaged: true, inFullscreen: false })).toBe(true);
+  });
+
+  it("stays quiet when the page loads already in full screen", () => {
+    expect(P.shouldRaiseWallOnLoad({ armed: true, engaged: true, inFullscreen: true })).toBe(false);
+  });
+
+  it("stays quiet for an armed lock that never engaged", () => {
+    // Armed from the popup and then reloaded before ever going full screen is
+    // not an escape attempt.
+    expect(P.shouldRaiseWallOnLoad({ armed: true, engaged: false, inFullscreen: false })).toBe(false);
+  });
+
+  it("stays quiet when nothing is armed", () => {
+    expect(P.shouldRaiseWallOnLoad({ armed: false, engaged: true, inFullscreen: false })).toBe(false);
+  });
+
+  it("defaults to quiet on missing state rather than walling a stranger", () => {
+    expect(P.shouldRaiseWallOnLoad({})).toBe(false);
+    expect(P.shouldRaiseWallOnLoad()).toBe(false);
+  });
+});

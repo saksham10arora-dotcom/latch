@@ -13,23 +13,38 @@ importScripts("persuade.js");
 // The service worker can be killed and restarted at any time, so every piece of
 // state it needs lives in chrome.storage rather than in a variable.
 
-const KEY = { armed: "armed", engaged: "engaged", tabId: "lockedTabId", breaks: "breaks" };
+const KEY = {
+  armed: "armed",
+  engaged: "engaged",
+  tabId: "lockedTabId",
+  url: "lockedUrl",
+  breaks: "breaks",
+};
 
 async function get() {
   return chrome.storage.local.get({
     [KEY.armed]: false,
     [KEY.engaged]: false,
     [KEY.tabId]: null,
+    [KEY.url]: null,
     [KEY.breaks]: 0,
   });
 }
 
 /** Arming pins the current tab. That pin is what "back" means later. */
 async function arm(tabId) {
+  // The URL is pinned too, so navigating the tab away from the lecture can be
+  // undone. Without it, typing any address into the locked tab walks straight
+  // out: the content script does not run off YouTube, so nothing would notice.
+  let url = null;
+  try {
+    url = (await chrome.tabs.get(tabId)).url ?? null;
+  } catch { /* tab vanished between the query and here */ }
   await chrome.storage.local.set({
     [KEY.armed]: true,
     [KEY.engaged]: false,
     [KEY.tabId]: tabId,
+    [KEY.url]: url,
     [KEY.breaks]: 0,
   });
 }
@@ -39,6 +54,7 @@ async function disarm() {
     [KEY.armed]: false,
     [KEY.engaged]: false,
     [KEY.tabId]: null,
+    [KEY.url]: null,
   });
 }
 
@@ -160,6 +176,34 @@ chrome.windows.onFocusChanged.addListener(async (windowId) => {
   }
 });
 
+const onYouTube = (url) => {
+  try {
+    return /(^|\.)youtube\.com$/.test(new URL(url).hostname);
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * The locked tab leaving YouTube.
+ *
+ * Only acted on once the lock has engaged, and only when the destination is off
+ * YouTube. Navigating between lectures, or to a different video, is ordinary
+ * use and is left alone: this is for the address bar, not for browsing.
+ */
+chrome.tabs.onUpdated.addListener(async (tabId, change) => {
+  if (!change.url) return;
+  const s = await get();
+  if (!s[KEY.armed] || !s[KEY.engaged]) return;
+  if (tabId !== s[KEY.tabId]) return;
+  if (onYouTube(change.url)) return;
+
+  const back = s[KEY.url];
+  if (!back || !onYouTube(back)) return; // nothing safe to return to
+  await chrome.storage.local.set({ [KEY.breaks]: (s[KEY.breaks] || 0) + 1 });
+  chrome.tabs.update(tabId, { url: back }).catch(() => {});
+});
+
 chrome.runtime.onInstalled.addListener(async () => {
   const current = await chrome.storage.local.get(LatchPersuade.DEFAULTS);
   // Never restore an armed state on install or update: a lock nobody chose is
@@ -168,6 +212,8 @@ chrome.runtime.onInstalled.addListener(async () => {
     ...LatchPersuade.DEFAULTS,
     ...current,
     [KEY.armed]: false,
+    [KEY.engaged]: false,
     [KEY.tabId]: null,
+    [KEY.url]: null,
   });
 });
