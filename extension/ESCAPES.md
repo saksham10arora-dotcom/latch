@@ -46,6 +46,21 @@ each of these costs enough to not be a reflex.
 | Incognito, or another Chrome profile | The extension is not loaded there. Worth knowing rather than pretending. |
 | Another browser entirely | Nothing here can see it. |
 
+## Load order, which is its own class of bug
+
+After a reload the wall goes up *before* YouTube has built its player. Anything
+the wall does to the page in a single call therefore lands on a page that does
+not exist yet.
+
+That is what made the lecture keep playing behind the wall: `pause()` ran, found
+no `<video>`, and YouTube then autoplayed into an empty room. Muting a page is a
+state to be held, not a call to be made once, so it retries while the element
+appears and a capture-phase `play` listener stops anything that starts later,
+ads and swapped-in elements included.
+
+Anything else that touches the page on load should assume the same: the page is
+not finished, and whatever you did may need doing again.
+
 ## Rules every guard follows
 
 1. **Default to not enforcing.** Missing or unreadable state must never wall

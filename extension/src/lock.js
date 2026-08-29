@@ -114,12 +114,46 @@
     phrase.hidden = !state.phrase;
     held = 0;
     refreshHint();
-    // Pausing matters: without it the lecture keeps playing behind the wall and
-    // you miss the part you were meant to be watching.
-    video()?.pause();
+    // Pausing matters: without it the lecture plays on behind the wall and you
+    // miss the part you were supposed to be watching.
+    silence();
     state.breaks += 1;
     chrome.storage.local.set({ breaks: state.breaks });
   }
+
+  /**
+   * Keep media paused for as long as the wall is up.
+   *
+   * A single pause() call is not enough. After a reload the wall goes up before
+   * YouTube has created the <video> element, so there is nothing to pause yet,
+   * and the player then autoplays into an empty room behind the wall. Retrying
+   * covers the element arriving late; the capture-phase "play" listener below
+   * covers everything after that, including ads and any element YouTube swaps in.
+   */
+  function silence() {
+    let tries = 0;
+    const attempt = () => {
+      document.querySelectorAll("video, audio").forEach((el) => {
+        try { el.pause(); } catch { /* not ready */ }
+      });
+      // Roughly three seconds of retries, which is longer than YouTube takes to
+      // build its player on a cold load.
+      if (++tries < 30 && overlay) setTimeout(attempt, 100);
+    };
+    attempt();
+  }
+
+  // Anything that starts playing while the wall is up is stopped again. `play`
+  // does not bubble, so this listens in the capture phase to catch it from any
+  // element, however late it appears.
+  document.addEventListener(
+    "play",
+    (e) => {
+      if (!overlay) return;
+      try { e.target?.pause?.(); } catch { /* gone */ }
+    },
+    true
+  );
 
   function down() {
     overlay?.remove();
@@ -127,6 +161,7 @@
     clearInterval(holdTimer);
     holdTimer = null;
     held = 0;
+    // Only the main video is resumed, never every media element on the page.
     video()?.play?.().catch(() => {});
   }
 
