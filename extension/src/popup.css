@@ -29,3 +29,4 @@ input[type=number], input[type=text] {
 
 .locked-note { color:#f8b45a; font-size:11px; line-height:1.45; margin:0 0 12px; }
 .switch input:disabled + span { opacity:.45; cursor:not-allowed; }
+.tip.warn { color:#f8b45a; }

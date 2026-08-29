@@ -54,3 +54,23 @@ chrome.storage.onChanged.addListener(() => chrome.storage.local.get(D, (s) => {
   applyLockState(s);
   status(s.armed);
 }));
+
+
+/**
+ * Show the shortcut Chrome has actually bound, not the one the manifest asked
+ * for. Chrome drops a contested suggested_key silently, so a hardcoded label
+ * both drifts when the manifest changes and lies when the binding was refused.
+ * Reading it back makes the popup incapable of being wrong about it.
+ */
+chrome.commands.getAll((commands) => {
+  const tip = $("shortcutTip");
+  const cmd = (commands || []).find((c) => c.name === "toggle-lock");
+  if (cmd && cmd.shortcut) {
+    tip.textContent = `${cmd.shortcut} arms and disarms without opening this.`;
+    tip.classList.remove("warn");
+  } else {
+    tip.textContent =
+      "No shortcut is bound. Another extension probably claimed it. Set one at chrome://extensions/shortcuts";
+    tip.classList.add("warn");
+  }
+});
