@@ -1,99 +1,183 @@
 /* The wall. Fixed and at the top of the stacking order so it covers the player,
    the page chrome and anything YouTube renders on top of them. */
+/* ============================================================================
+   The wall.
+
+   Type-led and deliberately close to monochrome. This screen appears at a
+   moment of impulse, so anything decorative competes with the one job it has,
+   which is to be read. The only non-text element earns its place: the rail at
+   the top is how far through the lecture you already are, which is the most
+   persuasive fact available and reads faster as a bar than as a sentence.
+   ========================================================================= */
+
 #latch-wall {
   position: fixed;
   inset: 0;
   z-index: 2147483647;
-  background: #0e1015;
-  color: #eceef2;
+  --ink: oklch(95% 0.01 260);
+  --muted: oklch(70% 0.025 260);
+  --dim: oklch(64% 0.03 258);
+  --line: oklch(100% 0 0 / 0.10);
+  --accent: oklch(68% 0.17 255);
+  --amber: oklch(80% 0.13 78);
+  color: var(--ink);
+  /* Base plus one soft pool of light above centre. Depth without glass. */
+  background:
+    radial-gradient(120% 90% at 50% 22%, oklch(19% 0.03 258), transparent 62%),
+    oklch(11% 0.015 260);
   display: flex;
   align-items: center;
   justify-content: center;
   font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  overflow-y: auto;
 }
 
-#latch-wall .latch-inner { max-width: 620px; padding: 40px; }
+/* how far into the lecture you already are */
+#latch-wall .latch-rail {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--line);
+}
+#latch-wall .latch-rail-fill {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: var(--accent);
+  box-shadow: 0 0 18px oklch(68% 0.17 255 / 0.55);
+}
+
+#latch-wall .latch-inner {
+  width: min(660px, calc(100vw - 64px));
+  padding: 48px 0;
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 0.32s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+}
+#latch-wall.is-in .latch-inner { opacity: 1; transform: none; }
 
 #latch-wall .latch-meta {
+  margin: 0 0 6px;
   font-size: 13px;
   font-weight: 600;
-  color: #5b9dff;
-  margin: 0 0 18px;
+  color: var(--accent);
   font-variant-numeric: tabular-nums;
 }
 
+/* the specific thing you are walking out of */
+#latch-wall .latch-title {
+  margin: 0 0 26px;
+  font-size: 13px;
+  color: var(--dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 #latch-wall .latch-head {
-  font-size: 38px;
-  line-height: 1.15;
-  font-weight: 700;
-  letter-spacing: -0.02em;
   margin: 0 0 18px;
+  font-size: clamp(2rem, 5.2vw, 3.35rem);
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  font-weight: 700;
   text-wrap: balance;
 }
 
 #latch-wall .latch-body {
-  font-size: 17px;
-  color: #9aa1ad;
-  margin: 0 0 28px;
+  margin: 0 0 34px;
+  max-width: 60ch;
+  font-size: 1.0625rem;
+  line-height: 1.68;
+  color: var(--muted);
   text-wrap: pretty;
 }
 
-#latch-wall .latch-actions { display: flex; gap: 12px; align-items: center; }
+#latch-wall .latch-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
 
 #latch-wall button {
   font: inherit;
   border-radius: 999px;
   cursor: pointer;
   border: 1px solid transparent;
+  transition: background 0.18s ease, border-color 0.18s ease,
+              color 0.18s ease, transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 #latch-wall .latch-back {
-  background: #5b9dff;
-  color: #0e1015;
-  font-weight: 600;
-  padding: 12px 24px;
+  background: var(--accent);
+  color: oklch(14% 0.02 260);
+  font-weight: 650;
+  padding: 13px 26px;
+  box-shadow: 0 0 30px oklch(68% 0.17 255 / 0.35);
 }
+#latch-wall .latch-back:hover { transform: translateY(-1px); }
 
-/* The way out is deliberately the quieter control, and it fills as you hold it
-   so the cost is visible rather than a mystery. */
+/* The way out is the quieter control, and it fills as you hold it so the cost
+   is visible while you are paying it rather than a number you are told. */
 #latch-wall .latch-out {
   position: relative;
   overflow: hidden;
   background: transparent;
-  color: #9aa1ad;
-  border-color: rgba(255, 255, 255, 0.16);
-  padding: 12px 20px;
+  color: var(--muted);
+  border-color: var(--line);
+  padding: 13px 22px;
+  font-variant-numeric: tabular-nums;
 }
+#latch-wall .latch-out:hover { color: var(--ink); border-color: var(--dim); }
 #latch-wall .latch-out-label { position: relative; z-index: 1; }
 #latch-wall .latch-fill {
   position: absolute;
   inset: 0 auto 0 0;
   width: 0%;
-  background: rgba(248, 180, 90, 0.28);
+  background: oklch(80% 0.13 78 / 0.22);
+  border-right: 1px solid oklch(80% 0.13 78 / 0.55);
   transition: width 0.1s linear;
 }
 
 #latch-wall .latch-phrase {
-  margin-top: 16px;
+  margin-top: 18px;
   width: 100%;
-  padding: 10px 12px;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  background: #181b22;
-  color: #eceef2;
+  max-width: 460px;
+  display: block;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: oklch(16% 0.02 260);
+  color: var(--ink);
   font: 13px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+#latch-wall .latch-phrase:focus {
+  outline: none;
+  border-color: var(--accent);
 }
 
 #latch-wall .latch-hint {
-  margin: 12px 0 0;
-  font-size: 12px;
-  color: #f8b45a;
-  min-height: 1.2em;
+  margin: 14px 0 0;
+  font-size: 12.5px;
+  color: var(--amber);
+  min-height: 1.3em;
   font-variant-numeric: tabular-nums;
 }
 
+@media (max-width: 640px) {
+  #latch-wall .latch-inner { padding: 32px 0; }
+  #latch-wall .latch-actions { flex-direction: column; align-items: stretch; }
+  #latch-wall .latch-actions button { width: 100%; }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  #latch-wall .latch-fill { transition: none; }
+  #latch-wall .latch-inner { opacity: 1; transform: none; transition: none; }
+  #latch-wall .latch-fill,
+  #latch-wall button { transition: none; }
+  #latch-wall .latch-back:hover { transform: none; }
 }
 
 /* Toast shown when a locked key is swallowed. Sits above full-screen video for

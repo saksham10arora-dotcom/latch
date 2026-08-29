@@ -61,15 +61,17 @@
     const root = document.createElement("div");
     root.id = "latch-wall";
     root.innerHTML = `
+      <div class="latch-rail"><span class="latch-rail-fill"></span></div>
       <div class="latch-inner">
         <p class="latch-meta"></p>
+        <p class="latch-title"></p>
         <h1 class="latch-head"></h1>
         <p class="latch-body"></p>
         <div class="latch-actions">
           <button class="latch-back" type="button">Back to the lecture</button>
           <button class="latch-out" type="button">
-            <span class="latch-out-label">Hold to unlock</span>
             <span class="latch-fill"></span>
+            <span class="latch-out-label">Hold to unlock</span>
           </button>
         </div>
         <input class="latch-phrase" type="text" placeholder="type the phrase" hidden>
@@ -94,6 +96,9 @@
         held += 0.1;
         const pct = Math.min(100, (held / state.holdSeconds) * 100);
         root.querySelector(".latch-fill").style.width = pct + "%";
+        const left = Math.max(0, state.holdSeconds - held);
+        root.querySelector(".latch-out-label").textContent =
+          left > 0 ? `Hold to unlock  ${left.toFixed(1)}s` : "Release to unlock";
         if (held >= state.holdSeconds) refreshHint();
         if (P.unlockReady({ held, holdSeconds: state.holdSeconds, typed: phraseValue(), phrase: state.phrase })) {
           release();
@@ -107,6 +112,7 @@
       // it cannot be chipped away at in half second bursts.
       held = 0;
       root.querySelector(".latch-fill").style.width = "0%";
+      root.querySelector(".latch-out-label").textContent = "Hold to unlock";
       refreshHint();
     };
     out.addEventListener("mousedown", startHold);
@@ -146,6 +152,14 @@
     overlay.querySelector(".latch-head").textContent = n.headline;
     overlay.querySelector(".latch-body").textContent = n.body;
     overlay.querySelector(".latch-meta").textContent = remainingLabel();
+    overlay.querySelector(".latch-title").textContent = lectureTitle();
+    // The rail is the single most persuasive fact on the screen made visible:
+    // how much of this lecture you have already sat through. A sentence saying
+    // "34 minutes in" is an argument; a bar that is two thirds full is a fact.
+    const done = watchedFraction();
+    overlay.querySelector(".latch-rail-fill").style.width = `${(done * 100).toFixed(2)}%`;
+    // One frame later so the transition has a start state to animate from.
+    requestAnimationFrame(() => overlay?.classList.add("is-in"));
     const phrase = overlay.querySelector(".latch-phrase");
     phrase.hidden = !state.phrase;
     held = 0;
@@ -211,6 +225,26 @@
     // engaged, and this is the one route that is allowed through.
     tell({ type: "release" });
     down();
+  }
+
+  /** How far through the lecture you already are, 0 to 1. */
+  function watchedFraction() {
+    const v = video();
+    if (!v || !v.duration || !isFinite(v.duration)) return 0;
+    return Math.max(0, Math.min(1, v.currentTime / v.duration));
+  }
+
+  /**
+   * The lecture's own name. Naming the specific thing you are walking out of is
+   * more pointed than "this session", and the page already knows it.
+   */
+  function lectureTitle() {
+    const el = document.querySelector(
+      "h1.ytd-watch-metadata yt-formatted-string, h1.title yt-formatted-string"
+    );
+    const fromDom = el?.textContent?.trim();
+    if (fromDom) return fromDom;
+    return document.title.replace(/\s*-\s*YouTube\s*$/, "").trim();
   }
 
   function remainingLabel() {
