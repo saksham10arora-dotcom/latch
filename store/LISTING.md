@@ -8,7 +8,7 @@ are what a review turns on.
 
 **Name**
 ```
-Latch Lecture Lock
+Latch
 ```
 
 **Short description** (132 char limit)
@@ -87,8 +87,8 @@ creditworthiness.
 
 | Item | Requirement | File |
 |---|---|---|
-| Icon | 128x128 PNG | `extension/icons/icon-128.png` |
-| Screenshot | 1280x800 or 640x400, at least one | `assets/store/screenshot-wall.png` |
+| Icon | 128x128 PNG | `icons/icon-128.png` |
+| Screenshot | 1280x800 or 640x400, at least one | `store/screenshot-wall.png` |
 
 `screenshot-source.html` regenerates the screenshot. Open it and capture at
 1280x800, or:
@@ -96,18 +96,18 @@ creditworthiness.
 ```bash
 "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
   --headless --screenshot=out.png --window-size=1280,800 \
-  file://$PWD/assets/store/screenshot-source.html
+  file://$PWD/store/screenshot-source.html
 ```
 
 ## Before you submit
 
 - A privacy policy URL is required once any permission is declared. The README
   section covers it; link to the repo, or add a `PRIVACY.md` and link that.
-- Bump `version` in `extension/manifest.json` for every upload. The store
+- Bump `version` in `manifest.json` for every upload. The store
   rejects a re-upload of a version it already has.
-- Build the package with `bash scripts/package-extension.sh` and upload
-  `build/latch-lecture-lock.zip`. Never zip the `extension/` folder directly:
-  it contains `node_modules` and tests.
+- Build the package with `bash scripts/package.sh` and upload
+  `build/latch.zip`. Never zip the repo directly: it contains
+  `node_modules` and tests.
 
 ## What to expect
 

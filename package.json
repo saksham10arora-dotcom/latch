@@ -1,0 +1,13 @@
+{
+  "name": "latch",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.8"
+  },
+  "description": "Pins a YouTube lecture in full screen."
+}

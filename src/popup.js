@@ -85,7 +85,7 @@ chrome.runtime.sendMessage({ type: "diagnostics" }, (d) => {
     el.textContent =
       "service worker did NOT respond.\n" +
       "Tab guards cannot run. Open chrome://extensions, click\n" +
-      "'service worker' under Lecture Lock and read the error.";
+      "'service worker' under Latch and read the error.";
     return;
   }
   el.textContent = [

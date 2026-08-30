@@ -8,18 +8,18 @@
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
-OUT="build/latch-lecture-lock.zip"
+OUT="build/latch.zip"
 STAGE="build/store"
 
-VERSION=$(python3 -c "import json;print(json.load(open('extension/manifest.json'))['version'])")
+VERSION=$(python3 -c "import json;print(json.load(open('manifest.json'))['version'])")
 
 rm -rf "$STAGE" "$OUT"
 mkdir -p "$STAGE"
 
 # Everything the manifest points at, and nothing else.
-cp extension/manifest.json "$STAGE/"
-cp -R extension/src "$STAGE/src"
-cp -R extension/icons "$STAGE/icons"
+cp manifest.json "$STAGE/"
+cp -R src "$STAGE/src"
+cp -R icons "$STAGE/icons"
 
 # Belt and braces: strip anything that crept in via the directory copies.
 find "$STAGE" -name "*.test.js" -delete

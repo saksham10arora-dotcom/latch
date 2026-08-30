@@ -54,15 +54,18 @@
   gap: clamp(32px, 6vw, 88px);
 }
 
-/* every child rises in sequence, so the screen assembles instead of appearing */
-#latch-wall .latch-stage > * > *,
+/* Every element rises in sequence, so the screen assembles rather than appears.
+   Scoped to the reading column's own children plus the gauge itself. The looser
+   `.latch-stage > * > *` also caught the gauge's SVG and its face, hiding the
+   insides of the one element that is supposed to draw itself. */
+#latch-wall .latch-inner > *,
 #latch-wall .latch-gauge {
   opacity: 0;
   transform: translateY(16px);
   transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1) var(--d, 0ms),
               transform 0.5s cubic-bezier(0.16, 1, 0.3, 1) var(--d, 0ms);
 }
-#latch-wall.is-in .latch-stage > * > *,
+#latch-wall.is-in .latch-inner > *,
 #latch-wall.is-in .latch-gauge { opacity: 1; transform: none; }
 
 #latch-wall .latch-meta {
@@ -224,7 +227,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   #latch-wall .latch-aurora { animation: none; }
-  #latch-wall .latch-stage > * > *,
+  #latch-wall .latch-inner > *,
   #latch-wall .latch-gauge { opacity: 1; transform: none; transition: none; }
   #latch-wall .latch-arc { transition: none; }
   #latch-wall .latch-fill, #latch-wall button { transition: none; }
