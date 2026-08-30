@@ -18,20 +18,37 @@ GitHub link.
 
 ## 1. Awesome lists
 
-**Star count is a bad proxy.** Checked each list's merge history rather than its
-badge, and the biggest one is dead.
+**Star count is a bad proxy.** Every list below was checked on its merge history
+and its own stated rules, not its badge. The biggest one is dead.
 
-| Repo | Stars | Last merged PR | Verdict |
+### Submitted
+
+| Repo | Stars | Last merged | PR |
 |---|---|---|---|
-| [jyguyomarch/awesome-productivity](https://github.com/jyguyomarch/awesome-productivity) | 3.3k | **May 2023**, 189 PRs open | Dead. Do not bother. |
-| [ProductivityDirectory/awesome-productivity-tools](https://github.com/ProductivityDirectory/awesome-productivity-tools) | 166 | **Jan 2024** | Dead. |
-| [themeselection/best-chrome-extensions](https://github.com/themeselection/best-chrome-extensions) | 572 | Mar 2026 | Alive, but **requires a Chrome Web Store URL**. Blocked until the listing is live. |
-| [linsa-io/chrome-extensions](https://github.com/linsa-io/chrome-extensions) | 482 | Mar 2026 | Alive, accepts source links. **PR open: [#70](https://github.com/linsa-io/chrome-extensions/pull/70)** |
-| [xyNNN/awesome-chrome](https://github.com/xyNNN/awesome-chrome) | 117 | **Aug 2026** | Most responsive of the lot. **PR open: [#88](https://github.com/xyNNN/awesome-chrome/pull/88)** |
+| [xyNNN/awesome-chrome](https://github.com/xyNNN/awesome-chrome) | 117 | Aug 2026 | [#88](https://github.com/xyNNN/awesome-chrome/pull/88) |
+| [linsa-io/chrome-extensions](https://github.com/linsa-io/chrome-extensions) | 482 | Mar 2026 | [#70](https://github.com/linsa-io/chrome-extensions/pull/70) |
+| [studyarena-com/awesome-study-tools](https://github.com/studyarena-com/awesome-study-tools) | 6 | active | [#2](https://github.com/studyarena-com/awesome-study-tools/pull/2) |
+| [jcanfield/awesome-digital-wellbeing](https://github.com/jcanfield/awesome-digital-wellbeing) | 4 | May 2025 | [#4](https://github.com/jcanfield/awesome-digital-wellbeing/pull/4) |
 
-**Do not** submit to `awesome-selfhosted` (316k stars). It is for self-hosted
-services and a browser extension will be rejected. A rejected PR on a big list is
-worse than no PR.
+The two small ones are worth roughly zero stars today, but they are the only
+lists whose actual subject is this. Early entries in a list that grows are worth
+more later than a late entry in a list that does not.
+
+### Blocked, not rejected
+
+| Repo | Stars | Why |
+|---|---|---|
+| [themeselection/best-chrome-extensions](https://github.com/themeselection/best-chrome-extensions) | 572 | Its format demands a Chrome Web Store URL. Submit the day that listing is live. |
+
+### Do not submit
+
+| Repo | Stars | Why |
+|---|---|---|
+| jyguyomarch/awesome-productivity | 3.3k | Dead. Last merge May 2023, 189 PRs open. |
+| ProductivityDirectory/awesome-productivity-tools | 166 | Dead. Last merge Jan 2024. |
+| altstackHQ/altstack-data | 322 | Requires self-hostable on user infrastructure, and excludes projects with no users. A browser extension fails both. |
+| diegoleme/awesome-open-source-alternatives | 480 | Organised by famous SaaS app. No focus or blocker category exists, and adding a top-level one for a new project is a stretch. |
+| awesome-selfhosted | 316k | For self-hosted services. A browser extension gets rejected, and a rejected PR on a big list is worse than no PR. |
 
 Line used, adapted to each list's own format:
 
@@ -39,8 +56,9 @@ Line used, adapted to each list's own format:
 - [Latch](https://github.com/saksham10arora-dotcom/latch) - Keeps a YouTube lecture in full screen; Escape does nothing and leaving takes a deliberate hold.
 ```
 
-Both open PRs offer to switch the link to the Web Store once that listing exists.
-`themeselection` gets its PR then too, since its stated format demands a store URL.
+Every open PR says plainly that the link can move to the Web Store page later,
+and the study-tools one is upfront that the project is new, which is a criterion
+that list states explicitly.
 
 ## 2. Reddit
 
