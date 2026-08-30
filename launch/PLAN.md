@@ -16,33 +16,31 @@ GitHub link.
 
 ---
 
-## 1. Awesome lists, the star firehoses
+## 1. Awesome lists
 
-One PR each, adding a single line. These are the highest leverage items here and
-the slowest to pay off, so open them early.
+**Star count is a bad proxy.** Checked each list's merge history rather than its
+badge, and the biggest one is dead.
 
-| Repo | Stars | Where it goes | Fit |
+| Repo | Stars | Last merged PR | Verdict |
 |---|---|---|---|
-| [jyguyomarch/awesome-productivity](https://github.com/jyguyomarch/awesome-productivity) | 3.3k | Tools → Focus | **Best fit.** General productivity, actively curated. |
-| [themeselection/best-chrome-extensions](https://github.com/themeselection/best-chrome-extensions) | 572 | Productivity | Chrome-specific, takes new entries. |
-| [linsa-io/chrome-extensions](https://github.com/linsa-io/chrome-extensions) | 482 | Productivity | Chrome-specific. |
-| [ProductivityDirectory/awesome-productivity-tools](https://github.com/ProductivityDirectory/awesome-productivity-tools) | 166 | Focus | Small but very low friction. |
-| [xyNNN/awesome-chrome](https://github.com/xyNNN/awesome-chrome) | 117 | Productivity | Small, quiet, cheap to try. |
+| [jyguyomarch/awesome-productivity](https://github.com/jyguyomarch/awesome-productivity) | 3.3k | **May 2023**, 189 PRs open | Dead. Do not bother. |
+| [ProductivityDirectory/awesome-productivity-tools](https://github.com/ProductivityDirectory/awesome-productivity-tools) | 166 | **Jan 2024** | Dead. |
+| [themeselection/best-chrome-extensions](https://github.com/themeselection/best-chrome-extensions) | 572 | Mar 2026 | Alive, but **requires a Chrome Web Store URL**. Blocked until the listing is live. |
+| [linsa-io/chrome-extensions](https://github.com/linsa-io/chrome-extensions) | 482 | Mar 2026 | Alive, accepts source links. **PR open: [#70](https://github.com/linsa-io/chrome-extensions/pull/70)** |
+| [xyNNN/awesome-chrome](https://github.com/xyNNN/awesome-chrome) | 117 | **Aug 2026** | Most responsive of the lot. **PR open: [#88](https://github.com/xyNNN/awesome-chrome/pull/88)** |
 
 **Do not** submit to `awesome-selfhosted` (316k stars). It is for self-hosted
 services and a browser extension will be rejected. A rejected PR on a big list is
 worse than no PR.
 
-Suggested line, matching the house style of most of these:
+Line used, adapted to each list's own format:
 
 ```markdown
-- [Latch](https://github.com/saksham10arora-dotcom/latch) - Pins a YouTube lecture in full screen; Escape does nothing and leaving takes a deliberate hold. `MIT`
+- [Latch](https://github.com/saksham10arora-dotcom/latch) - Keeps a YouTube lecture in full screen; Escape does nothing and leaving takes a deliberate hold.
 ```
 
-Read each list's CONTRIBUTING first. Most want alphabetical order and a specific
-dash character, and getting that wrong is the usual reason a one-line PR sits.
-
----
+Both open PRs offer to switch the link to the Web Store once that listing exists.
+`themeselection` gets its PR then too, since its stated format demands a store URL.
 
 ## 2. Reddit
 
