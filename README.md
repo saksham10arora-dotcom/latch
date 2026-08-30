@@ -173,10 +173,6 @@ the lecture tab and reopen it if it is closed.
 
 - **Chrome and Chromium only.** The logic ports; the manifest needs a Firefox
   variant.
-- **`Cmd-Tab` is not covered.** macOS handles it before Chrome sees the key.
-- **Other extensions are outside the boundary.** An extension cannot act on
-  another extension, and toolbar buttons and the side panel are browser chrome
-  that no page can reach.
 - **A determined person gets around all of it.** Latch raises the cost of a
   distraction. It is not a prison, and it should not be.
 
