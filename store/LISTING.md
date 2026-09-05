@@ -68,7 +68,7 @@ be undone by reopening the same lecture. No browsing history is read, stored or
 transmitted; only the single tab the user explicitly locked is inspected.
 ```
 
-**Host permissions (47 learning platforms)**
+**Host permissions (47 learning platforms, plus local files)**
 ```
 Latch only runs on video learning platforms, because that is the only place a
 lecture lock has anything to do. On each one the content script needs to observe
@@ -78,6 +78,13 @@ The list is explicit rather than a broad wildcard, so the extension can never ru
 anywhere the user has not chosen to study. Two entries are scoped further to the
 learning section of an otherwise general site, requesting only
 linkedin.com/learning/ and oreilly.com/library/ rather than those domains whole.
+
+file:///* is requested for the same feature applied to course readings: a PDF
+lecture handout opened from disk. Chrome renders it as an ordinary document, so
+the same lock screen and the same full-screen handling apply. Chrome does not
+grant this silently in any case, since the user must additionally enable "Allow
+access to file URLs" by hand. No file is read, uploaded or transmitted; the
+extension only draws over the tab and watches for the user leaving full screen.
 
 No other site is requested, and no data is read from any of them beyond the
 presence of a video element and the lecture title shown on the lock screen.

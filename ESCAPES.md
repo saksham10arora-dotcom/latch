@@ -134,3 +134,43 @@ optimisation rather than taking the guard down everywhere.
    a real URL is only deactivated.
 4. **Enforce in the worker, not the UI.** The popup is a page anyone can open
    devtools on, so greying a control out is a courtesy, not the enforcement.
+
+## PDFs
+
+A PDF tab is a real document, which is why the lock works there at all. Verified
+in Chrome rather than assumed, because the PDF viewer is an extension in its own
+right and none of this was obvious:
+
+| | |
+|---|---|
+| `document.contentType` | `application/pdf`, on an ordinary top level document |
+| Content script | runs |
+| Overlay appended to `documentElement` | covers the viewport, hit-tests on top |
+| `keydown` on `document` | fires, **even while the PDF itself has focus** |
+| `document.fullscreenEnabled` | true |
+| `navigator.keyboard.lock` | present |
+
+So every mechanism the lock is built on survives. What does not is everything
+that reads the video, because the viewer renders in a frame belonging to another
+extension and this one cannot see into it.
+
+### What that costs
+
+- **No progress.** There is no page number to read, so the wall drops its gauge
+  instead of showing a ring frozen at zero. An absence is honest; a zero is a
+  claim.
+- **No player, so no way in.** Nothing on a PDF can enter element full screen:
+  no controls, no `f` shortcut. Chrome's own F11 is *window* full screen, which
+  leaves `document.fullscreenElement` null and so never engages Keyboard Lock at
+  all. Latch supplies its own button. It has to be a button in the page, because
+  `requestFullscreen` is only honoured inside a real user gesture, and a click
+  in the popup is not a gesture in this document.
+- **The viewer's own toolbar stays reachable until full screen.** Before you
+  press the button there is no lock, which is the same as every other site.
+
+### Not covered
+
+PDFs on sites outside the platform list. Reaching them needs `<all_urls>`, which
+is the largest permission a Chrome extension can ask for, and a focus timer
+should not hold it. `file://` is covered instead, since a handout on disk is the
+common case, and Chrome still makes you grant that one by hand.

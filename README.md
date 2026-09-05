@@ -50,6 +50,8 @@ Latch is what happens next. Press Escape and nothing happens.
 
 **Course hosting** · Teachable, Thinkific, Kajabi, Podia, Maven, Vimeo
 
+**PDFs** · Any PDF open in Chrome's own viewer, including ones on your disk.
+
 LinkedIn and O'Reilly are scoped to `/learning/` and `/library/`, so the
 extension never asks for the rest of either site.
 
@@ -63,6 +65,24 @@ implementation detail that moves.
 
 A site entry in `src/persuade.js` is therefore an optimisation, not a
 requirement. Adding one is a few lines, and nothing breaks without it.
+
+### Readings
+
+A PDF is not a video, but it is the other half of most courses, so Latch locks
+it too. Chrome renders a PDF as an ordinary document: the content script runs in
+it, the wall covers it, and Escape still reaches the page even while the PDF
+itself has focus.
+
+Two things differ. A PDF has no player, so there is no full screen button to
+press and nothing for the lock to wait for; Latch puts its own **Lock this
+reading** button in the corner instead, and pressing it is what engages the
+lock. And there is no progress to show, because the viewer runs in a frame the
+extension is not allowed to read, so the wall drops its gauge rather than
+displaying a ring stuck at zero.
+
+Local files need one extra step: `chrome://extensions` → Latch → **Details** →
+turn on **Allow access to file URLs**. Chrome will not grant it silently, and
+without it a `file://` PDF is invisible to the extension.
 
 ## What it stops
 
@@ -162,7 +182,8 @@ the binding back from Chrome and will tell you; set your own at
 `chrome://extensions/shortcuts`.
 
 **Turn on "Allow in Incognito"** while you are there, or a private window is a
-clean way out.
+clean way out. **Turn on "Allow access to file URLs"** too if you read PDFs off
+your own disk.
 
 ---
 
@@ -201,6 +222,10 @@ the lecture tab and reopen it if it is closed.
 
 - **Chrome and Chromium only.** The logic ports; the manifest needs a Firefox
   variant.
+- **PDFs on arbitrary websites are not covered.** Latch locks PDFs on the
+  platforms above and on `file://`. Reaching every PDF on the web would mean
+  requesting access to every site on the web, which is a much larger permission
+  than a focus timer has any business holding.
 - **A determined person gets around all of it.** Latch raises the cost of a
   distraction. It is not a prison, and it should not be.
 

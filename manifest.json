@@ -54,7 +54,8 @@
     "*://*.kajabi.com/*",
     "*://*.podia.com/*",
     "*://*.maven.com/*",
-    "*://*.vimeo.com/*"
+    "*://*.vimeo.com/*",
+    "file:///*"
   ],
   "content_scripts": [
     {
@@ -105,7 +106,8 @@
         "*://*.kajabi.com/*",
         "*://*.podia.com/*",
         "*://*.maven.com/*",
-        "*://*.vimeo.com/*"
+        "*://*.vimeo.com/*",
+        "file:///*"
       ],
       "js": [
         "src/persuade.js",

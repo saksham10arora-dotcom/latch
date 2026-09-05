@@ -57,7 +57,13 @@ const SUPPORTED_HOSTS = [
 
 const onSupportedHost = (url) => {
   try {
-    const host = new URL(url).hostname.toLowerCase();
+    const u = new URL(url);
+    // A local PDF has no hostname at all, so it has to be matched on the
+    // protocol. Without this the tab guard would decline to watch a reading
+    // that the content script had already locked, and the wall would come up
+    // with tab switching left open behind it.
+    if (u.protocol === "file:") return true;
+    const host = u.hostname.toLowerCase();
     return SUPPORTED_HOSTS.some((h) => host === h || host.endsWith("." + h));
   } catch {
     return false;
