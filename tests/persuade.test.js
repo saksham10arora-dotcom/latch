@@ -432,12 +432,35 @@ describe("the host list lives in three places and must not drift", () => {
 
   const hostsFromPattern = (p) => p.replace(/^\*:\/\/\*\./, "").split("/")[0];
 
+  // file:///* is a protocol, not a course platform, so it has no row in SITES
+  // and is exempted from the host comparisons below rather than being allowed
+  // to quietly widen them.
+  const FILE_MATCH = "file:///*";
+  const siteMatches = (list) => list.filter((p) => p !== FILE_MATCH);
+
+  it("asks for local files in both places", () => {
+    // A PDF on disk is the common reading case. If this were in host_permissions
+    // but not in matches the content script would never run on it, which is the
+    // failure that looks exactly like the lock being broken.
+    expect(manifest.host_permissions).toContain(FILE_MATCH);
+    expect(manifest.content_scripts[0].matches).toContain(FILE_MATCH);
+  });
+
+  it("does not ask for every site on the web", () => {
+    // Reading arbitrary web PDFs would need <all_urls>, which is the single
+    // largest permission a Chrome extension can request. Latch deliberately
+    // does not, so this guards against it creeping in.
+    const all = [...manifest.host_permissions, ...manifest.content_scripts[0].matches];
+    expect(all).not.toContain("<all_urls>");
+    expect(all).not.toContain("*://*/*");
+  });
+
   it("manifest matches cover exactly the sites the module knows", () => {
     // A host in the table but not the manifest means the content script never
     // runs there. A host in the manifest but not the table means the extension
     // asks for a permission it never uses, which a store review will ask about.
     const fromManifest = [...new Set(
-      manifest.content_scripts[0].matches.map(hostsFromPattern)
+      siteMatches(manifest.content_scripts[0].matches).map(hostsFromPattern)
     )].sort();
     expect(fromManifest).toEqual(Object.keys(P.SITES).sort());
   });
@@ -451,7 +474,7 @@ describe("the host list lives in three places and must not drift", () => {
     // linkedin.com and oreilly.com are general sites. Requesting all of either
     // would be a much larger ask than the extension needs.
     const byHost = Object.fromEntries(
-      manifest.content_scripts[0].matches.map((p) => [hostsFromPattern(p), p])
+      siteMatches(manifest.content_scripts[0].matches).map((p) => [hostsFromPattern(p), p])
     );
     expect(byHost["linkedin.com"]).toBe("*://*.linkedin.com/learning/*");
     expect(byHost["oreilly.com"]).toBe("*://*.oreilly.com/library/*");
@@ -460,5 +483,54 @@ describe("the host list lives in three places and must not drift", () => {
   it("has no duplicate hosts", () => {
     const keys = Object.keys(P.SITES);
     expect(new Set(keys).size).toBe(keys.length);
+  });
+});
+
+describe("document tabs", () => {
+  it("recognises the PDF viewer by content type", () => {
+    // Chrome renders a PDF as a real document whose contentType is the PDF
+    // type, not text/html. That single fact is the whole detection: there is no
+    // <embed> to look for, because the viewer lives in a frame this extension
+    // is not allowed to see into.
+    expect(P.isDocumentTab("application/pdf")).toBe(true);
+    expect(P.isDocumentTab("application/pdf; charset=binary")).toBe(true);
+    expect(P.isDocumentTab("APPLICATION/PDF")).toBe(true);
+    expect(P.isDocumentTab("text/html")).toBe(false);
+    expect(P.isDocumentTab("")).toBe(false);
+    expect(P.isDocumentTab(undefined)).toBe(false);
+  });
+
+  it("asks for a full screen gesture when the page has no player to use", () => {
+    // Every video platform already gives you a way into full screen, so Latch
+    // just waits for it. A PDF gives you none: no player, no f shortcut, no
+    // full screen button. Without something to click, an armed lock on a PDF
+    // could never engage at all.
+    expect(P.needsManualFullscreen({ hasVideo: false })).toBe(true);
+    expect(P.needsManualFullscreen({ hasVideo: true })).toBe(false);
+  });
+
+  it("defers to the player on anything that has one", () => {
+    // The site's own full screen button is always the better route: it puts the
+    // player wrapper in full screen, keeping its controls, which a bare
+    // documentElement request would lose.
+    expect(P.needsManualFullscreen({ hasVideo: true })).toBe(false);
+  });
+
+  it("names the document without its file extension", () => {
+    expect(P.readingTitle("lecture-07-spectral.pdf")).toBe("lecture-07-spectral");
+    expect(P.readingTitle("18.06 Linear Algebra.PDF")).toBe("18.06 Linear Algebra");
+    expect(P.readingTitle("notes")).toBe("notes");
+    expect(P.readingTitle("")).toBe("");
+  });
+
+  it("treats local files as lockable", () => {
+    // The dominant PDF case is a lecture handout already on disk. If the worker
+    // did not count file:// as supported it would refuse to guard the tab, and
+    // the wall would go up with tab switching left wide open.
+    expect(P.isSupportedHost("file:///Users/x/lectures/week3.pdf")).toBe(true);
+  });
+
+  it("still refuses hosts that are not course platforms", () => {
+    expect(P.isSupportedHost("https://reddit.com/r/all")).toBe(false);
   });
 });

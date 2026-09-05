@@ -212,10 +212,67 @@
     return { ...DEFAULT_SITE, ...(key ? SITES[key] : {}), key };
   }
 
-  /** Is this a host the lock is allowed to operate on? */
+  /**
+   * Is this tab a document Chrome renders itself, rather than a web page?
+   *
+   * A PDF looks nothing like the pages the rest of this file assumes. There is
+   * no player, no <video>, and no progress to read, because the viewer runs in
+   * a frame belonging to another extension that this one cannot see into. What
+   * there IS, verified in Chrome, is an ordinary top level document at the
+   * PDF's own URL: a content script runs in it, an overlay appended to
+   * documentElement covers the viewport, keydown still reaches document even
+   * while the PDF itself has focus, and both fullscreenEnabled and
+   * navigator.keyboard.lock are available. Every mechanism the lock is built on
+   * therefore works; only the things that read the video do not.
+   *
+   * contentType is the whole detection. Looking for an <embed> would fail,
+   * since the viewer is not exposed in this document's DOM.
+   */
+  function isDocumentTab(contentType) {
+    if (!contentType) return false;
+    return String(contentType).toLowerCase().split(";")[0].trim() === "application/pdf";
+  }
+
+  /**
+   * Must Latch supply the way into full screen itself?
+   *
+   * Every video platform already offers one, so the lock just waits for the
+   * `fullscreenchange` it produces. A PDF offers none: no player controls, no
+   * `f` shortcut, no full screen button to click. Chrome's own F11 is *window*
+   * full screen, which leaves document.fullscreenElement null and so never
+   * engages Keyboard Lock at all.
+   *
+   * Without something of our own to click, an armed lock on a PDF could never
+   * engage. That click also has to be a real one: requestFullscreen only works
+   * inside a user gesture, which is why this is a button in the page and not
+   * something the popup or the worker can do on your behalf.
+   *
+   * The rule lands on "has no video" rather than "is a PDF" because that is the
+   * condition that actually matters, and it covers the slide decks and reader
+   * apps that are not PDFs but are just as playerless.
+   */
+  function needsManualFullscreen({ hasVideo = false } = {}) {
+    return !hasVideo;
+  }
+
+  /** A document's name, without the file extension the tab title carries. */
+  function readingTitle(rawTitle) {
+    return String(rawTitle || "").replace(/\.pdf$/i, "").trim();
+  }
+
+  /**
+   * Is this a host the lock is allowed to operate on?
+   *
+   * file: is included because the dominant PDF case is a handout already on
+   * disk. It has no hostname, so it has to be named on the protocol instead;
+   * without this the worker would decline to guard the tab and the wall would
+   * come up with tab switching still wide open.
+   */
   function isSupportedHost(url) {
     try {
-      return siteKey(new URL(url).hostname) !== null;
+      const u = new URL(url);
+      if (u.protocol === "file:") return true;
+      return siteKey(u.hostname) !== null;
     } catch {
       return false;
     }
@@ -279,6 +336,9 @@
     siteKey,
     siteFor,
     isSupportedHost,
+    isDocumentTab,
+    needsManualFullscreen,
+    readingTitle,
     shouldRaiseWallOnLoad,
     NUDGES,
     nudge,

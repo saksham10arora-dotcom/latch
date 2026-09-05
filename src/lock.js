@@ -22,6 +22,13 @@
   const site = P.siteFor(location.hostname);
 
   /**
+   * A PDF tab. Chrome renders it as a real document, so the lock's machinery
+   * all works here; what is missing is a player, which is why the dock below
+   * exists and why the wall drops the parts that read a video.
+   */
+  const isDoc = P.isDocumentTab(document.contentType);
+
+  /**
    * querySelector that cannot throw.
    *
    * Selectors now come from a per-site table, so a typo in one entry would
@@ -126,11 +133,18 @@
     // Back is a real click, which is a user gesture, which is the only context
     // where requestFullscreen() is allowed to work. This is why the wall has a
     // button instead of just putting you back automatically.
-    root.querySelector(".latch-back").addEventListener("click", () => {
+    const back = root.querySelector(".latch-back");
+    if (isDoc) back.textContent = "Back to the reading";
+    back.addEventListener("click", () => {
       const v = video();
       // Full screen goes on the player wrapper where a site has one, since the
       // bare <video> loses the player's own controls in full screen.
-      const target = closestSafe(v, site.player) || v;
+      //
+      // documentElement is the fallback, and it is what a PDF always uses. It
+      // matters that this is last rather than never: without it the wall's own
+      // "back" button did nothing at all on a page with no video, which turned
+      // the wall into a dead end whose only exit was the eight second hold.
+      const target = closestSafe(v, site.player) || v || document.documentElement;
       target?.requestFullscreen?.().catch(() => {});
       down();
     });
@@ -138,6 +152,7 @@
     const out = root.querySelector(".latch-out");
     const startHold = () => {
       if (holdTimer) return;
+      out.classList.add("is-holding");
       holdTimer = setInterval(() => {
         held += 0.1;
         const pct = Math.min(100, (held / state.holdSeconds) * 100);
@@ -154,6 +169,7 @@
     const stopHold = () => {
       clearInterval(holdTimer);
       holdTimer = null;
+      out.classList.remove("is-holding");
       // Resetting on release is the point: letting go restarts the ritual, so
       // it cannot be chipped away at in half second bursts.
       held = 0;
@@ -197,6 +213,58 @@
     observer.observe(document.documentElement, { childList: true });
   }
 
+  // --- the way in ----------------------------------------------------------
+
+  /**
+   * A full screen button for pages that do not have one.
+   *
+   * On every video platform the lock is passive: you arm it, you press the
+   * player's own full screen control, and `fullscreenchange` engages it. A PDF
+   * has no such control, so an armed lock there would sit waiting for an event
+   * that can never arrive.
+   *
+   * It has to be a button in the page rather than something the popup does,
+   * because requestFullscreen is only honoured inside a real user gesture and
+   * a click in the popup is not a gesture in this document.
+   */
+  let dock = null;
+
+  function showDock() {
+    if (dock) return;
+    dock = document.createElement("button");
+    dock.id = "latch-dock";
+    dock.type = "button";
+    dock.textContent = isDoc ? "Lock this reading" : "Lock this tab";
+    dock.addEventListener("click", () => {
+      document.documentElement.requestFullscreen?.().catch(() => {
+        toast("Chrome refused full screen here. Latch cannot lock this tab.");
+      });
+    });
+    document.documentElement.appendChild(dock);
+  }
+
+  function hideDock() {
+    dock?.remove();
+    dock = null;
+  }
+
+  /**
+   * The dock belongs on screen in exactly one situation: armed, not yet
+   * engaged, and nothing on the page that could take us into full screen.
+   */
+  function syncDock() {
+    const wanted =
+      state.armed && !engaged && P.needsManualFullscreen({ hasVideo: !!video() });
+    if (wanted) showDock();
+    else hideDock();
+  }
+
+  // Players are built late, so "there is no video" is only true until it is
+  // not. Re-checking keeps the dock from lingering on a YouTube page that was
+  // still loading when the lock was armed. It costs nothing once engaged,
+  // because syncDock is a no-op the moment either flag is false.
+  setInterval(syncDock, 1000);
+
   const phraseValue = () => overlay?.querySelector(".latch-phrase")?.value ?? "";
 
   function refreshHint() {
@@ -214,6 +282,7 @@
 
   function up() {
     if (overlay) return;
+    hideDock();
     overlay = build();
     const v = video();
     const n = P.nudge({
@@ -225,24 +294,38 @@
     overlay.querySelector(".latch-body").textContent = n.body;
     overlay.querySelector(".latch-meta").textContent = remainingLabel();
     overlay.querySelector(".latch-title").textContent = lectureTitle();
-    // The rail is the single most persuasive fact on the screen made visible:
-    // how much of this lecture you have already sat through. A sentence saying
-    // "34 minutes in" is an argument; a bar that is two thirds full is a fact.
-    const done = watchedFraction();
-    const pct = Math.round(done * 100);
-    const arc = overlay.querySelector(".latch-arc");
-    const CIRC = 2 * Math.PI * 112;
-    arc.style.strokeDasharray = `${CIRC}`;
-    arc.style.strokeDashoffset = `${CIRC}`;   // start empty, then draw to value
-    overlay.querySelector(".latch-pct").innerHTML = `0<i>%</i>`;
+    // The wall's own entrance is independent of anything the page knows, so it
+    // runs before the gauge is even considered.
+    requestAnimationFrame(() => overlay?.classList.add("is-in"));
 
-    requestAnimationFrame(() => {
-      overlay?.classList.add("is-in");
-      // Drawing the arc rather than snapping it is the point: watching it fill
-      // to where you already are is the argument, and it reads as earned.
-      arc.style.strokeDashoffset = `${CIRC * (1 - done)}`;
-      countUp(overlay.querySelector(".latch-pct"), pct);
-    });
+    // The gauge is the single most persuasive fact on the screen made visible:
+    // how much of this lecture you have already sat through. A sentence saying
+    // "34 minutes in" is an argument; a ring that is two thirds full is a fact.
+    //
+    // It only exists where there is something to measure. On a PDF there is
+    // not: the viewer runs in a frame this extension cannot see into, so there
+    // is no page number to read either, and a ring pinned at 0% would be a
+    // claim about your progress rather than an absence of one.
+    if (!v) {
+      overlay.querySelector(".latch-gauge").remove();
+      // Tells the stylesheet to collapse the two column grid, which would
+      // otherwise keep an empty track and push the text off centre.
+      overlay.classList.add("is-bare");
+    } else {
+      const done = watchedFraction();
+      const pct = Math.round(done * 100);
+      const arc = overlay.querySelector(".latch-arc");
+      const CIRC = 2 * Math.PI * 112;
+      arc.style.strokeDasharray = `${CIRC}`;
+      arc.style.strokeDashoffset = `${CIRC}`;   // start empty, then draw to value
+      overlay.querySelector(".latch-pct").innerHTML = `0<i>%</i>`;
+      requestAnimationFrame(() => {
+        // Drawing the arc rather than snapping it is the point: watching it fill
+        // to where you already are is the argument, and it reads as earned.
+        arc.style.strokeDashoffset = `${CIRC * (1 - done)}`;
+        countUp(overlay.querySelector(".latch-pct"), pct);
+      });
+    }
     const phrase = overlay.querySelector(".latch-phrase");
     phrase.hidden = !state.phrase;
     held = 0;
@@ -343,12 +426,17 @@
   function lectureTitle() {
     const fromDom = q(site.title)?.textContent?.trim();
     if (fromDom) return fromDom;
+    // A PDF has no heading to read: the tab title is the filename, and the
+    // extension on the end is noise on a wall that is trying to name the thing
+    // you are walking out of.
+    if (isDoc) return P.readingTitle(document.title);
     // Most course platforms suffix the site name onto the tab title.
     return document.title.replace(/\s*[-|·–]\s*[^-|·–]{1,30}$/, "").trim() || document.title;
   }
 
   function remainingLabel() {
     const v = video();
+    if (isDoc) return "Reading lock";
     if (!v || !v.duration) return "Lecture lock";
     const left = Math.max(0, v.duration - v.currentTime);
     const m = Math.floor(left / 60);
@@ -474,11 +562,13 @@
       // refuse a disarm from anywhere except the wall.
       store({ engaged: true });
       down();
+      hideDock();
       takeKeyboardLock();
     } else {
       releaseKeyboardLock();
       // Only an exit counts. Never having been in full screen is not an escape.
       if (engaged) up();
+      else syncDock();
     }
   });
 
@@ -550,6 +640,7 @@
       // reload was the escape attempt, so the wall is what greets it.
       up();
     }
+    syncDock();
   });
 
   chrome.storage.onChanged.addListener((changes) => {
@@ -565,6 +656,7 @@
       engaged = false;
       releaseKeyboardLock();
       down();
+      hideDock();
     } else if (inFullscreen()) {
       // Armed mid-lecture, already full screen: take the lock now rather than
       // waiting for the next transition, which may never come.
@@ -576,7 +668,14 @@
       // Armed from the popup, so necessarily windowed. Wait for full screen
       // instead of raising the wall at someone who has not gone anywhere.
       down();
-      toast("Armed. Go full screen and it locks.");
+      syncDock();
+      // A page with no player has no full screen of its own to go to, so the
+      // instruction has to point at the button Latch just put there.
+      toast(
+        P.needsManualFullscreen({ hasVideo: !!video() })
+          ? "Armed. Press the Latch button to lock this tab."
+          : "Armed. Go full screen and it locks."
+      );
     }
   });
 })();

@@ -54,6 +54,18 @@
   gap: clamp(32px, 6vw, 88px);
 }
 
+/* A wall with nothing to measure: no gauge, so no second column.
+
+   Without this the grid keeps the empty track and its 88px gap, which shifts
+   the argument bodily to the left on a screen that has nothing on the right to
+   balance it. The narrower stage is the other half: a single column of text at
+   the full 1080px is far past a comfortable measure. */
+#latch-wall.is-bare .latch-stage {
+  width: min(760px, calc(100vw - 80px));
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+}
+
 /* Every element rises in sequence, so the screen assembles rather than appears.
    Scoped to the reading column's own children plus the gauge itself. The looser
    `.latch-stage > * > *` also caught the gauge's SVG and its face, hiding the
@@ -145,8 +157,15 @@
   background: linear-gradient(90deg, oklch(86% 0.16 76 / 0.06), oklch(86% 0.16 76 / 0.30));
   border-right: 2px solid oklch(88% 0.17 76);
   box-shadow: 0 0 16px oklch(86% 0.16 76 / 0.45);
-  transition: width 0.1s linear;
+  /* Zero width does not mean invisible: the 2px leading edge and its glow still
+     paint, which left an amber sliver pinned to the left of the button before
+     anything had been held. The progress bar should not exist until there is
+     progress. */
+  opacity: 0;
+  transition: width 0.1s linear, opacity 0.1s linear;
 }
+
+#latch-wall .latch-out.is-holding .latch-fill { opacity: 1; }
 
 #latch-wall .latch-phrase {
   margin-top: 18px;
@@ -256,4 +275,56 @@
 
 @media (prefers-reduced-motion: reduce) {
   #latch-toast { transition: none; }
+}
+
+/* ============================================================================
+   The dock.
+
+   A full screen button for pages that have none of their own, which in practice
+   means PDFs. It sits in the corner rather than the middle because it is not an
+   interruption: the page is still yours until you press it.
+
+   Styled to read as the extension's, not the page's. It appears only in the gap
+   between arming and engaging, so it is never on screen for long.
+   ========================================================================= */
+
+#latch-dock {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 2147483646;   /* below the wall, above the page */
+  margin: 0;
+  padding: 12px 18px;
+  border-radius: 999px;
+  border: 1px solid oklch(100% 0 0 / 0.16);
+  background: oklch(16% 0.02 262);
+  color: oklch(96% 0.01 260);
+  font: 600 14px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  box-shadow: 0 6px 28px oklch(0% 0 0 / 0.45);
+  transition: background 0.16s ease, transform 0.16s ease;
+}
+
+#latch-dock::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 9px;
+  vertical-align: 1px;
+  border-radius: 50%;
+  /* Armed but not yet holding anything. The amber says "ready", not "running". */
+  background: oklch(82% 0.14 78);
+}
+
+#latch-dock:hover { background: oklch(21% 0.025 262); }
+#latch-dock:active { transform: translateY(1px); }
+#latch-dock:focus-visible {
+  outline: 2px solid oklch(70% 0.18 255);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #latch-dock { transition: none; }
 }
