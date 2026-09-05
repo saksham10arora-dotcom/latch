@@ -253,6 +253,14 @@ describe("worker copy stays in step with the module", () => {
     }
   });
 
+it("the worker's inlined host list matches the module's", () => {
+    // background.js cannot importScripts, so it carries its own copy. If the
+    // two drift, a site locks in the page but the tab guard ignores it.
+    const list = code.match(/const SUPPORTED_HOSTS = \[([\s\S]*?)\]/)[1];
+    const workerHosts = [...list.matchAll(/"([^"]+)"/g)].map((m) => m[1]).sort();
+    expect(workerHosts).toEqual(Object.keys(P.SITES).sort());
+  });
+
   it("its disarm rule agrees with the module's on every input", () => {
     const body = code.match(/function canDisarmFromPopup\([\s\S]*?\n\}/)[0];
     const workerFn = new Function(`${body}; return canDisarmFromPopup;`)();
@@ -329,5 +337,89 @@ describe("only one thing may end a session", () => {
     const clearIdx = removed.indexOf("reopening = false");
     expect(setIdx).toBeGreaterThan(-1);
     expect(clearIdx).toBeGreaterThan(setIdx);
+  });
+});
+
+describe("site adapters", () => {
+  it("resolves the big platforms, and www or subdomains of them", () => {
+    expect(P.siteKey("www.youtube.com")).toBe("youtube.com");
+    expect(P.siteKey("m.youtube.com")).toBe("youtube.com");
+    expect(P.siteKey("www.udemy.com")).toBe("udemy.com");
+    expect(P.siteKey("www.coursera.org")).toBe("coursera.org");
+    expect(P.siteKey("courses.edx.org")).toBe("edx.org");
+    expect(P.siteKey("onlinecourses.nptel.ac.in")).toBe("nptel.ac.in");
+  });
+
+  it("does not match a lookalike host", () => {
+    // The classic suffix bug: notyoutube.com must not resolve to youtube.com.
+    expect(P.siteKey("notyoutube.com")).toBeNull();
+    expect(P.siteKey("youtube.com.evil.test")).toBeNull();
+    expect(P.siteKey("example.com")).toBeNull();
+  });
+
+  it("always returns a usable adapter, even for an unknown host", () => {
+    // This is what makes "etc" work: an unlisted platform still locks, using
+    // accessibility labels rather than a class name nobody has looked up.
+    const s = P.siteFor("some-course-site.test");
+    expect(s.video).toBe("video");
+    expect(s.fullscreenButtons).toContain("aria-label");
+    expect(s.title).toBeTruthy();
+    expect(s.key).toBeNull();
+  });
+
+  it("lets a named site override only what it needs", () => {
+    const yt = P.siteFor("www.youtube.com");
+    expect(yt.player).toBe("#movie_player");
+    expect(yt.key).toBe("youtube.com");
+    // nptel names no overrides at all, so it should be pure defaults
+    const nptel = P.siteFor("nptel.ac.in");
+    expect(nptel.video).toBe(P.DEFAULT_SITE.video);
+    expect(nptel.fullscreenButtons).toBe(P.DEFAULT_SITE.fullscreenButtons);
+    expect(nptel.key).toBe("nptel.ac.in");
+  });
+
+  it("every site entry only uses keys the default defines", () => {
+    // A typo like `fullScreenButtons` would silently do nothing.
+    const allowed = new Set(Object.keys(P.DEFAULT_SITE));
+    for (const [host, cfg] of Object.entries(P.SITES)) {
+      for (const k of Object.keys(cfg)) {
+        expect(allowed.has(k), `${host} has unknown key "${k}"`).toBe(true);
+      }
+    }
+  });
+
+  it("every selector is structurally well formed", () => {
+    // No DOM in this suite, so this checks the shapes a malformed selector
+    // takes: unbalanced brackets or quotes, a stray comma, an empty string.
+    // lock.js additionally wraps every use so a bad one cannot throw.
+    const all = [P.DEFAULT_SITE, ...Object.values(P.SITES)];
+    for (const cfg of all) {
+      for (const [k, sel] of Object.entries(cfg)) {
+        if (sel === null) continue;
+        expect(typeof sel, k).toBe("string");
+        expect(sel.trim().length, k).toBeGreaterThan(0);
+        const count = (c) => [...sel].filter((x) => x === c).length;
+        expect(count("["), `${k}: ${sel}`).toBe(count("]"));
+        expect(count("("), `${k}: ${sel}`).toBe(count(")"));
+        expect(count('"') % 2, `${k}: ${sel}`).toBe(0);
+        expect(sel.split(",").every((p) => p.trim().length > 0), `${k}: ${sel}`).toBe(true);
+      }
+    }
+  });
+
+  it("lock.js cannot be thrown by a bad selector", () => {
+    const fs = require("node:fs");
+    const lock = fs.readFileSync(new URL("../src/lock.js", import.meta.url), "utf8");
+    expect(lock).toMatch(/function q\(selector, root\)/);
+    expect(lock).toMatch(/function closestSafe\(el, selector\)/);
+    // no raw querySelector on a site-table selector
+    expect(lock).not.toMatch(/document\.querySelector\(site\./);
+    expect(lock).not.toMatch(/closest\?\.\(site\./);
+  });
+
+  it("isSupportedHost gates on the same table", () => {
+    expect(P.isSupportedHost("https://www.udemy.com/course/x/learn/lecture/1")).toBe(true);
+    expect(P.isSupportedHost("https://reddit.com/r/all")).toBe(false);
+    expect(P.isSupportedHost("not a url")).toBe(false);
   });
 });

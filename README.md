@@ -11,7 +11,7 @@
 ╚══════╝╚═╝  ╚═╝   ╚═╝    ╚═════╝╚═╝  ╚═╝
 ```
 
-**Pins a YouTube lecture in full screen. Escape does nothing.**
+**Pins a video lecture in full screen. Escape does nothing.**
 
 > Most blockers ask you to be disciplined at the exact moment you are not.
 > Latch is built for the version of you who wants to quit.
@@ -35,6 +35,21 @@ You are forty minutes into a lecture. It gets hard. Your hand reaches for
 Latch is what happens next. Press Escape and nothing happens.
 
 ---
+
+## Where it works
+
+YouTube, Udemy, Coursera, edX, Khan Academy, NPTEL, SWAYAM, Pluralsight,
+Skillshare, DataCamp, Brilliant and MIT OpenCourseWare.
+
+The lock itself is site-agnostic. Keyboard Lock, `fullscreenchange` and the wall
+are browser features, not YouTube features, so only four things ever needed a
+site to be named, and three of them have a generic answer. An unlisted platform
+still locks, using accessibility labels (`aria-label="Full screen"`) rather than
+class names, because a label is a contract a player is unlikely to break while
+`.ytp-fullscreen-button` is an implementation detail that moves.
+
+A site entry in `src/persuade.js` is therefore an optimisation, not a
+requirement. Adding one is a few lines, and nothing breaks without it.
 
 ## What it stops
 

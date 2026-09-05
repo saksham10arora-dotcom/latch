@@ -2,18 +2,40 @@
   "manifest_version": 3,
   "name": "Latch",
   "version": "0.1.0",
-  "description": "Pins a YouTube lecture in full screen. Escape does nothing, and getting out takes a deliberate hold.",
+  "description": "Pins a video lecture in full screen. Escape does nothing, and getting out takes a deliberate hold.",
   "permissions": [
     "storage",
     "tabs"
   ],
   "host_permissions": [
-    "*://*.youtube.com/*"
+    "*://*.youtube.com/*",
+    "*://*.udemy.com/*",
+    "*://*.coursera.org/*",
+    "*://*.edx.org/*",
+    "*://*.khanacademy.org/*",
+    "*://*.nptel.ac.in/*",
+    "*://*.swayam.gov.in/*",
+    "*://*.pluralsight.com/*",
+    "*://*.skillshare.com/*",
+    "*://*.datacamp.com/*",
+    "*://*.brilliant.org/*",
+    "*://*.ocw.mit.edu/*"
   ],
   "content_scripts": [
     {
       "matches": [
-        "*://*.youtube.com/*"
+        "*://*.youtube.com/*",
+        "*://*.udemy.com/*",
+        "*://*.coursera.org/*",
+        "*://*.edx.org/*",
+        "*://*.khanacademy.org/*",
+        "*://*.nptel.ac.in/*",
+        "*://*.swayam.gov.in/*",
+        "*://*.pluralsight.com/*",
+        "*://*.skillshare.com/*",
+        "*://*.datacamp.com/*",
+        "*://*.brilliant.org/*",
+        "*://*.ocw.mit.edu/*"
       ],
       "js": [
         "src/persuade.js",

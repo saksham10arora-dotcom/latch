@@ -16,7 +16,38 @@
    */
   let engaged = false;
 
-  const video = () => document.querySelector("video.html5-main-video, video");
+  // Resolved once per page load. The adapter always yields something usable, so
+  // an unlisted course platform still gets the generic selectors rather than
+  // nothing.
+  const site = P.siteFor(location.hostname);
+
+  /**
+   * querySelector that cannot throw.
+   *
+   * Selectors now come from a per-site table, so a typo in one entry would
+   * otherwise throw SyntaxError on every click and take the guard down with it.
+   * A bad selector should cost that one site its optimisation, nothing more.
+   */
+  function q(selector, root) {
+    if (!selector) return null;
+    try {
+      return (root || document).querySelector(selector);
+    } catch {
+      return null;
+    }
+  }
+
+  /** closest() with the same protection. */
+  function closestSafe(el, selector) {
+    if (!el || !selector) return null;
+    try {
+      return el.closest?.(selector) ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  const video = () => q(site.video) || q("video");
   const inFullscreen = () => !!document.fullscreenElement;
 
   /**
@@ -97,7 +128,9 @@
     // button instead of just putting you back automatically.
     root.querySelector(".latch-back").addEventListener("click", () => {
       const v = video();
-      const target = v?.closest("#movie_player") || v;
+      // Full screen goes on the player wrapper where a site has one, since the
+      // bare <video> loses the player's own controls in full screen.
+      const target = closestSafe(v, site.player) || v;
       target?.requestFullscreen?.().catch(() => {});
       down();
     });
@@ -308,12 +341,10 @@
    * more pointed than "this session", and the page already knows it.
    */
   function lectureTitle() {
-    const el = document.querySelector(
-      "h1.ytd-watch-metadata yt-formatted-string, h1.title yt-formatted-string"
-    );
-    const fromDom = el?.textContent?.trim();
+    const fromDom = q(site.title)?.textContent?.trim();
     if (fromDom) return fromDom;
-    return document.title.replace(/\s*-\s*YouTube\s*$/, "").trim();
+    // Most course platforms suffix the site name onto the tab title.
+    return document.title.replace(/\s*[-|·–]\s*[^-|·–]{1,30}$/, "").trim() || document.title;
   }
 
   function remainingLabel() {
@@ -426,7 +457,7 @@
     "click",
     (e) => {
       if (!state.armed || !engaged) return;
-      const button = e.target?.closest?.(".ytp-fullscreen-button, .ytp-size-button");
+      const button = closestSafe(e.target, site.fullscreenButtons);
       if (!button) return;
       e.preventDefault();
       e.stopPropagation();

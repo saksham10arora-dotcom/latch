@@ -102,6 +102,82 @@
   }
 
   /**
+   * Per-site knowledge, and a fallback that does not need any.
+   *
+   * The lock itself is already site-agnostic: Keyboard Lock, `fullscreenchange`
+   * and the wall are browser features, not YouTube features. Only four things
+   * ever needed a site to be named, and three of them have a generic answer.
+   *
+   * The fallbacks lean on accessibility labels rather than class names, because
+   * `aria-label="Full screen"` is a stable contract a player is unlikely to
+   * break, while `.ytp-fullscreen-button` is an implementation detail that moves.
+   * A site entry is therefore an optimisation, not a requirement: an unlisted
+   * course platform still locks correctly.
+   */
+  const DEFAULT_SITE = {
+    video: "video",
+    player: null, // fall back to the video element itself
+    fullscreenButtons:
+      '[aria-label*="full screen" i],[aria-label*="fullscreen" i],' +
+      '[title*="full screen" i],[title*="fullscreen" i]',
+    title: "h1",
+  };
+
+  const SITES = {
+    "youtube.com": {
+      video: "video.html5-main-video",
+      player: "#movie_player",
+      fullscreenButtons: ".ytp-fullscreen-button,.ytp-size-button",
+      title: "h1.ytd-watch-metadata yt-formatted-string,h1.title yt-formatted-string",
+    },
+    "udemy.com": {
+      // Udemy hashes its class names per build, so anything like
+      // .video-player--1a2b3c is guaranteed to rot. Attribute prefixes and the
+      // aria labels are what survive.
+      player: '[data-purpose="video-player"],[class*="video-player"]',
+      title: '[data-purpose="curriculum-item-title"],h1',
+    },
+    "coursera.org": {
+      player: '[data-testid="video-player"],.rc-VideoControls,.video-wrapper',
+      title: '[data-testid="lecture-title"],h1',
+    },
+    "edx.org": { player: ".video, #video-player", title: ".unit-title,h1" },
+    "khanacademy.org": { title: '[data-testid="lesson-title"],h1' },
+    "nptel.ac.in": {},
+    "swayam.gov.in": {},
+    "pluralsight.com": {},
+    "skillshare.com": {},
+    "datacamp.com": {},
+    "brilliant.org": {},
+    "ocw.mit.edu": {},
+  };
+
+  /** Registrable host for a hostname, so www. and subdomains resolve the same. */
+  function siteKey(hostname) {
+    if (!hostname) return null;
+    const host = String(hostname).toLowerCase();
+    for (const key of Object.keys(SITES)) {
+      if (host === key || host.endsWith("." + key)) return key;
+    }
+    return null;
+  }
+
+  /** The adapter for a hostname. Always returns something usable. */
+  function siteFor(hostname) {
+    const key = siteKey(hostname);
+    return { ...DEFAULT_SITE, ...(key ? SITES[key] : {}), key };
+  }
+
+  /** Is this a host the lock is allowed to operate on? */
+  function isSupportedHost(url) {
+    try {
+      return siteKey(new URL(url).hostname) !== null;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
    * Should a chrome.storage change re-run the arm/disarm logic?
    *
    * Only when the `armed` flag itself flipped. This exists because of a real
@@ -154,6 +230,11 @@
 
   const api = {
     DEFAULTS,
+    SITES,
+    DEFAULT_SITE,
+    siteKey,
+    siteFor,
+    isSupportedHost,
     shouldRaiseWallOnLoad,
     NUDGES,
     nudge,

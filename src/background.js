@@ -37,9 +37,19 @@ function canDisarmFromPopup({ armed = false, engaged = false } = {}) {
 // The service worker can be killed and restarted at any time, so every piece of
 // state it needs lives in chrome.storage rather than in a variable.
 
-const onYouTube = (url) => {
+// Mirror of LatchPersuade.isSupportedHost, inlined for the same reason the rest
+// of this file is: nothing may run before the listeners register. Kept in step
+// by a test that re-derives both from source.
+const SUPPORTED_HOSTS = [
+  "youtube.com", "udemy.com", "coursera.org", "edx.org", "khanacademy.org",
+  "nptel.ac.in", "swayam.gov.in", "pluralsight.com", "skillshare.com",
+  "datacamp.com", "brilliant.org", "ocw.mit.edu",
+];
+
+const onSupportedHost = (url) => {
   try {
-    return /(^|\.)youtube\.com$/.test(new URL(url).hostname);
+    const host = new URL(url).hostname.toLowerCase();
+    return SUPPORTED_HOSTS.some((h) => host === h || host.endsWith("." + h));
   } catch {
     return false;
   }
@@ -250,7 +260,7 @@ chrome.tabs.onRemoved.addListener(async (tabId, info) => {
 
   // Before it engaged, closing the tab is just closing a tab.
   const back = s[KEY.url];
-  if (!s[KEY.engaged] || !back || !onYouTube(back)) {
+  if (!s[KEY.engaged] || !back || !onSupportedHost(back)) {
     await disarm();
     return;
   }
@@ -309,10 +319,10 @@ chrome.tabs.onUpdated.addListener(async (tabId, change) => {
   const s = await get();
   if (!s[KEY.armed] || !s[KEY.engaged]) return;
   if (tabId !== s[KEY.tabId]) return;
-  if (onYouTube(change.url)) return;
+  if (onSupportedHost(change.url)) return;
 
   const back = s[KEY.url];
-  if (!back || !onYouTube(back)) return; // nothing safe to return to
+  if (!back || !onSupportedHost(back)) return; // nothing safe to return to
   await chrome.storage.local.set({ [KEY.breaks]: (s[KEY.breaks] || 0) + 1 });
   chrome.tabs.update(tabId, { url: back }).catch(() => {});
 });

@@ -111,6 +111,18 @@ watching for new tabs does not read our own reopen as somebody escaping, and the
 new id is pinned before the flag clears so nothing observes an armed lock
 pointing at nothing.
 
+## Sites
+
+The per-site table in `src/persuade.js` overrides four things: the video
+element, the player wrapper full screen is requested on, the player's own full
+screen button, and where the lecture title lives. Everything else, including
+every guard in this document, is site-agnostic.
+
+An unlisted site falls back to `video`, the video element itself, an
+`aria-label` match, and `h1`. Selector use in `lock.js` goes through wrappers
+that swallow a `SyntaxError`, so a typo in one site's entry costs that site its
+optimisation rather than taking the guard down everywhere.
+
 ## Rules every guard follows
 
 1. **Default to not enforcing.** Missing or unreadable state must never wall
