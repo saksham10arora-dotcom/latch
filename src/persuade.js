@@ -124,6 +124,7 @@
   };
 
   const SITES = {
+    // --- video and the big MOOCs ---
     "youtube.com": {
       video: "video.html5-main-video",
       player: "#movie_player",
@@ -142,14 +143,57 @@
       title: '[data-testid="lecture-title"],h1',
     },
     "edx.org": { player: ".video, #video-player", title: ".unit-title,h1" },
-    "khanacademy.org": { title: '[data-testid="lesson-title"],h1' },
-    "nptel.ac.in": {},
-    "swayam.gov.in": {},
+    "udacity.com": {},
+    "futurelearn.com": {},
+    "codecademy.com": {},
     "pluralsight.com": {},
     "skillshare.com": {},
     "datacamp.com": {},
-    "brilliant.org": {},
+    "educative.io": {},
+    "alison.com": {},
+    "masterclass.com": {},
+    "domestika.org": {},
+    "linkedin.com": {}, // scoped to /learning/ by the manifest match pattern
+    "oreilly.com": {},
+
+    // --- developer specific ---
+    "frontendmasters.com": {},
+    "egghead.io": {},
+    "laracasts.com": {},
+    "scrimba.com": {},
+    "teamtreehouse.com": {},
+    "vueschool.io": {},
+    "leetcode.com": {},
+    "codewithmosh.com": {},
+
+    // --- India ---
+    "nptel.ac.in": {},
+    "swayam.gov.in": {},
+    "unacademy.com": {},
+    "pw.live": {},
+    "vedantu.com": {},
+    "byjus.com": {},
+    "doubtnut.com": {},
+    "testbook.com": {},
+    "scaler.com": {},
+    "codingninjas.com": {},
+    "upgrad.com": {},
+    "mygreatlearning.com": {},
+    "simplilearn.com": {},
+
+    // --- universities and open courseware ---
     "ocw.mit.edu": {},
+    "online.stanford.edu": {},
+    "khanacademy.org": { title: '[data-testid="lesson-title"],h1' },
+    "brilliant.org": {},
+
+    // --- course hosting, where an independent course usually lives ---
+    "teachable.com": {},
+    "thinkific.com": {},
+    "kajabi.com": {},
+    "podia.com": {},
+    "maven.com": {},
+    "vimeo.com": {},
   };
 
   /** Registrable host for a hostname, so www. and subdomains resolve the same. */

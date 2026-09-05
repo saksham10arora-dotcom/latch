@@ -38,15 +38,28 @@ Latch is what happens next. Press Escape and nothing happens.
 
 ## Where it works
 
-YouTube, Udemy, Coursera, edX, Khan Academy, NPTEL, SWAYAM, Pluralsight,
-Skillshare, DataCamp, Brilliant and MIT OpenCourseWare.
+47 platforms:
 
-The lock itself is site-agnostic. Keyboard Lock, `fullscreenchange` and the wall
-are browser features, not YouTube features, so only four things ever needed a
-site to be named, and three of them have a generic answer. An unlisted platform
-still locks, using accessibility labels (`aria-label="Full screen"`) rather than
-class names, because a label is a contract a player is unlikely to break while
-`.ytp-fullscreen-button` is an implementation detail that moves.
+**Video and the big MOOCs** · YouTube, Udemy, Coursera, edX, Udacity, FutureLearn, Codecademy, Pluralsight, Skillshare, DataCamp, Educative, Alison, MasterClass, Domestika, LinkedIn Learning, O'Reilly
+
+**Developer platforms** · Frontend Masters, egghead.io, Laracasts, Scrimba, Treehouse, Vue School, LeetCode, Code with Mosh
+
+**India** · NPTEL, SWAYAM, Unacademy, Physics Wallah, Vedantu, BYJU'S, Doubtnut, Testbook, Scaler, Coding Ninjas, upGrad, Great Learning, Simplilearn
+
+**Universities and open courseware** · MIT OpenCourseWare, Stanford Online, Khan Academy, Brilliant
+
+**Course hosting** · Teachable, Thinkific, Kajabi, Podia, Maven, Vimeo
+
+LinkedIn and O'Reilly are scoped to `/learning/` and `/library/`, so the
+extension never asks for the rest of either site.
+
+**And anywhere else.** The lock itself is site-agnostic: Keyboard Lock,
+`fullscreenchange` and the wall are browser features, not YouTube features, so
+only four things ever needed a site to be named, and three of them have a
+generic answer. An unlisted platform still locks, matching on accessibility
+labels (`aria-label="Full screen"`) rather than class names, because a label is a
+contract a player is unlikely to break while `.ytp-fullscreen-button` is an
+implementation detail that moves.
 
 A site entry in `src/persuade.js` is therefore an optimisation, not a
 requirement. Adding one is a few lines, and nothing breaks without it.

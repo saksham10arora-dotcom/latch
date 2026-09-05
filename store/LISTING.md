@@ -13,7 +13,7 @@ Latch
 
 **Short description** (132 char limit)
 ```
-Pins a YouTube lecture in full screen. Escape does nothing. Getting out takes a deliberate eight second hold.
+Pins a video lecture in full screen. Escape does nothing. Getting out takes a deliberate eight second hold.
 ```
 
 **Category** Productivity → Workflow & Planning
@@ -68,11 +68,19 @@ be undone by reopening the same lecture. No browsing history is read, stored or
 transmitted; only the single tab the user explicitly locked is inspected.
 ```
 
-**Host permission `*://*.youtube.com/*`**
+**Host permissions (47 learning platforms)**
 ```
-The lock runs only on YouTube, where the lecture is. The content script needs to
-observe full-screen changes on the page and display the lock screen over it.
-The extension requests no access to any other site.
+Latch only runs on video learning platforms, because that is the only place a
+lecture lock has anything to do. On each one the content script needs to observe
+full-screen changes on the page and display the lock screen over the player.
+
+The list is explicit rather than a broad wildcard, so the extension can never run
+anywhere the user has not chosen to study. Two entries are scoped further to the
+learning section of an otherwise general site, requesting only
+linkedin.com/learning/ and oreilly.com/library/ rather than those domains whole.
+
+No other site is requested, and no data is read from any of them beyond the
+presence of a video element and the lecture title shown on the lock screen.
 ```
 
 **Remote code** No. All code is in the package; nothing is fetched or evaluated

@@ -41,9 +41,18 @@ function canDisarmFromPopup({ armed = false, engaged = false } = {}) {
 // of this file is: nothing may run before the listeners register. Kept in step
 // by a test that re-derives both from source.
 const SUPPORTED_HOSTS = [
-  "youtube.com", "udemy.com", "coursera.org", "edx.org", "khanacademy.org",
-  "nptel.ac.in", "swayam.gov.in", "pluralsight.com", "skillshare.com",
-  "datacamp.com", "brilliant.org", "ocw.mit.edu",
+  "youtube.com", "udemy.com", "coursera.org", "edx.org", "udacity.com",
+  "futurelearn.com", "codecademy.com", "pluralsight.com", "skillshare.com",
+  "datacamp.com", "educative.io", "alison.com", "masterclass.com",
+  "domestika.org", "linkedin.com", "oreilly.com", "frontendmasters.com",
+  "egghead.io", "laracasts.com", "scrimba.com", "teamtreehouse.com",
+  "vueschool.io", "leetcode.com", "codewithmosh.com", "nptel.ac.in",
+  "swayam.gov.in", "unacademy.com", "pw.live", "vedantu.com", "byjus.com",
+  "doubtnut.com", "testbook.com", "scaler.com", "codingninjas.com",
+  "upgrad.com", "mygreatlearning.com", "simplilearn.com", "ocw.mit.edu",
+  "online.stanford.edu", "khanacademy.org", "brilliant.org",
+  "teachable.com", "thinkific.com", "kajabi.com", "podia.com", "maven.com",
+  "vimeo.com"
 ];
 
 const onSupportedHost = (url) => {

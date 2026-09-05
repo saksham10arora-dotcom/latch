@@ -423,3 +423,42 @@ describe("site adapters", () => {
     expect(P.isSupportedHost("not a url")).toBe(false);
   });
 });
+
+describe("the host list lives in three places and must not drift", () => {
+  const fs = require("node:fs");
+  const manifest = JSON.parse(
+    fs.readFileSync(new URL("../manifest.json", import.meta.url), "utf8")
+  );
+
+  const hostsFromPattern = (p) => p.replace(/^\*:\/\/\*\./, "").split("/")[0];
+
+  it("manifest matches cover exactly the sites the module knows", () => {
+    // A host in the table but not the manifest means the content script never
+    // runs there. A host in the manifest but not the table means the extension
+    // asks for a permission it never uses, which a store review will ask about.
+    const fromManifest = [...new Set(
+      manifest.content_scripts[0].matches.map(hostsFromPattern)
+    )].sort();
+    expect(fromManifest).toEqual(Object.keys(P.SITES).sort());
+  });
+
+  it("host_permissions and content script matches agree", () => {
+    expect([...manifest.host_permissions].sort())
+      .toEqual([...manifest.content_scripts[0].matches].sort());
+  });
+
+  it("scopes the broad domains to their learning section", () => {
+    // linkedin.com and oreilly.com are general sites. Requesting all of either
+    // would be a much larger ask than the extension needs.
+    const byHost = Object.fromEntries(
+      manifest.content_scripts[0].matches.map((p) => [hostsFromPattern(p), p])
+    );
+    expect(byHost["linkedin.com"]).toBe("*://*.linkedin.com/learning/*");
+    expect(byHost["oreilly.com"]).toBe("*://*.oreilly.com/library/*");
+  });
+
+  it("has no duplicate hosts", () => {
+    const keys = Object.keys(P.SITES);
+    expect(new Set(keys).size).toBe(keys.length);
+  });
+});
