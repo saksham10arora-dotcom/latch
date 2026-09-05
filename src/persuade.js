@@ -117,6 +117,10 @@
   const DEFAULT_SITE = {
     video: "video",
     player: null, // fall back to the video element itself
+    // Set by sites that are document readers rather than video players, so the
+    // wall says "reading" where "lecture" would be wrong. Chrome's own PDF
+    // viewer is detected by content type instead and does not need an entry.
+    reading: false,
     fullscreenButtons:
       '[aria-label*="full screen" i],[aria-label*="fullscreen" i],' +
       '[title*="full screen" i],[title*="fullscreen" i]',
@@ -186,6 +190,19 @@
     "online.stanford.edu": {},
     "khanacademy.org": { title: '[data-testid="lesson-title"],h1' },
     "brilliant.org": {},
+
+    // --- readings ---
+    "drive.google.com": {
+      // Course notes are shared as Drive links constantly, and Drive's viewer
+      // is a web app rather than Chrome's PDF viewer: the content type is
+      // text/html, so the PDF detection cannot see it and the site has to say
+      // so itself. Scoped to /file/ by the manifest, so the extension gets the
+      // viewer and not the rest of someone's Drive.
+      reading: true,
+      // Deliberately no selector. Drive's headings are chrome, not the
+      // document's name, so the tab title is the more reliable source.
+      title: null,
+    },
 
     // --- course hosting, where an independent course usually lives ---
     "teachable.com": {},

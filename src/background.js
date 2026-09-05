@@ -52,7 +52,7 @@ const SUPPORTED_HOSTS = [
   "upgrad.com", "mygreatlearning.com", "simplilearn.com", "ocw.mit.edu",
   "online.stanford.edu", "khanacademy.org", "brilliant.org",
   "teachable.com", "thinkific.com", "kajabi.com", "podia.com", "maven.com",
-  "vimeo.com"
+  "vimeo.com", "drive.google.com"
 ];
 
 const onSupportedHost = (url) => {
