@@ -13,7 +13,7 @@ Latch
 
 **Short description** (132 char limit)
 ```
-Pins a video lecture in full screen. Escape does nothing. Getting out takes a deliberate eight second hold.
+Pins a lecture or a PDF reading in full screen. Escape does nothing. Getting out takes a deliberate eight second hold.
 ```
 
 **Category** Productivity → Workflow & Planning
@@ -24,7 +24,9 @@ Pins a video lecture in full screen. Escape does nothing. Getting out takes a de
 
 ```
 Latch is for the moment forty minutes into a lecture when it gets hard and your
-hand reaches for Cmd-T before you have decided anything.
+hand reaches for Cmd-T before you have decided anything. It covers the reading
+that came with the lecture too: PDFs in Chrome's viewer, on Google Drive, or
+open from your own disk.
 
 Arm it with a keyboard shortcut while a lecture is playing, and:
 
@@ -34,10 +36,14 @@ Arm it with a keyboard shortcut while a lecture is playing, and:
   - Navigating away from the lecture puts you back
   - The video pauses if you do get out, so it is not playing to an empty room
 
+On a PDF there is no player to go full screen from, so Latch puts its own button
+in the corner and pressing it is what engages the lock.
+
 Getting out is always possible and always deliberate: hold a button for eight
 seconds, optionally typing a phrase as well. Letting go resets the timer. The
 screen you hold it on tells you how far into the lecture you already are, and
-argues, briefly, that you stay.
+argues, briefly, that you stay. On a reading there is no progress to read, so it
+shows none rather than guessing.
 
 It is not a prison. Holding Escape for two seconds always forces full screen off,
 and removing the extension always works. Latch raises the cost of a distraction

@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Latch",
   "version": "0.1.0",
-  "description": "Pins a video lecture in full screen. Escape does nothing, and getting out takes a deliberate hold.",
+  "description": "Pins a lecture or a reading in full screen. Escape does nothing, and getting out takes a deliberate hold.",
   "permissions": [
     "storage",
     "tabs"

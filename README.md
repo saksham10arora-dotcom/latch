@@ -11,14 +11,14 @@
 ╚══════╝╚═╝  ╚═╝   ╚═╝    ╚═════╝╚═╝  ╚═╝
 ```
 
-**Pins a video lecture in full screen. Escape does nothing.**
+**Pins a lecture or a reading in full screen. Escape does nothing.**
 
 > Most blockers ask you to be disciplined at the exact moment you are not.
 > Latch is built for the version of you who wants to quit.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-5b9dff.svg)](LICENSE)
 [![Chrome MV3](https://img.shields.io/badge/Chrome-MV3-5b9dff.svg)](manifest.json)
-[![Tests](https://img.shields.io/badge/tests-46%20passing-4caf82.svg)](#development)
+[![Tests](https://img.shields.io/badge/tests-71%20passing-4caf82.svg)](#development)
 [![Escape surface](https://img.shields.io/badge/escape%20surface-audited-f8b45a.svg)](ESCAPES.md)
 
 <img src="assets/demo-wall.gif" width="600" alt="The lock screen assembling: the gauge draws to how far into the lecture you already are">
@@ -33,6 +33,9 @@ You are forty minutes into a lecture. It gets hard. Your hand reaches for
 `Cmd-T` before you have decided anything.
 
 Latch is what happens next. Press Escape and nothing happens.
+
+The same is true of the reading it set. A course is a video and a PDF, and the
+PDF is usually the part you quit first.
 
 ---
 
@@ -182,6 +185,10 @@ git clone https://github.com/saksham10arora-dotcom/latch.git
 cloned folder.
 
 Then play a lecture, go full screen, and press **Option-Shift-L**.
+
+For a reading, arm Latch and press the **Lock this reading** button it puts in
+the corner. A PDF has no full screen control of its own, so that button is the
+way in.
 
 If the shortcut does nothing, another extension has claimed it. The popup reads
 the binding back from Chrome and will tell you; set your own at
