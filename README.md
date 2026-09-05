@@ -38,7 +38,7 @@ Latch is what happens next. Press Escape and nothing happens.
 
 ## Where it works
 
-47 platforms:
+48 platforms:
 
 **Video and the big MOOCs** · YouTube, Udemy, Coursera, edX, Udacity, FutureLearn, Codecademy, Pluralsight, Skillshare, DataCamp, Educative, Alison, MasterClass, Domestika, LinkedIn Learning, O'Reilly
 
@@ -50,10 +50,11 @@ Latch is what happens next. Press Escape and nothing happens.
 
 **Course hosting** · Teachable, Thinkific, Kajabi, Podia, Maven, Vimeo
 
-**PDFs** · Any PDF open in Chrome's own viewer, including ones on your disk.
+**Readings** · Google Drive's file viewer, and any PDF open in Chrome's own viewer, including ones on your disk.
 
-LinkedIn and O'Reilly are scoped to `/learning/` and `/library/`, so the
-extension never asks for the rest of either site.
+LinkedIn, O'Reilly and Google Drive are scoped to `/learning/`, `/library/` and
+`/file/`, so the extension never asks for the rest of any of them. Drive
+especially: it gets the file viewer, not your files.
 
 **And anywhere else.** The lock itself is site-agnostic: Keyboard Lock,
 `fullscreenchange` and the wall are browser features, not YouTube features, so
@@ -72,6 +73,11 @@ A PDF is not a video, but it is the other half of most courses, so Latch locks
 it too. Chrome renders a PDF as an ordinary document: the content script runs in
 it, the wall covers it, and Escape still reaches the page even while the PDF
 itself has focus.
+
+Google Drive is the same idea by a different route. Its viewer is a web app
+rather than Chrome's, so the page reports itself as HTML and the PDF detection
+cannot see it; the site adapter says so instead. Shared course notes usually
+live there, which makes it worth naming.
 
 Two things differ. A PDF has no player, so there is no full screen button to
 press and nothing for the lock to wait for; Latch puts its own **Lock this

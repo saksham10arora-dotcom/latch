@@ -392,9 +392,16 @@ describe("site adapters", () => {
     // No DOM in this suite, so this checks the shapes a malformed selector
     // takes: unbalanced brackets or quotes, a stray comma, an empty string.
     // lock.js additionally wraps every use so a bad one cannot throw.
+    // `reading` is a flag, not a selector, so it is excluded by name rather
+    // than by type: a typo like `title: true` should still fail this test.
+    const FLAGS = new Set(["reading"]);
     const all = [P.DEFAULT_SITE, ...Object.values(P.SITES)];
     for (const cfg of all) {
       for (const [k, sel] of Object.entries(cfg)) {
+        if (FLAGS.has(k)) {
+          expect(typeof sel, k).toBe("boolean");
+          continue;
+        }
         if (sel === null) continue;
         expect(typeof sel, k).toBe("string");
         expect(sel.trim().length, k).toBeGreaterThan(0);
@@ -471,13 +478,16 @@ describe("the host list lives in three places and must not drift", () => {
   });
 
   it("scopes the broad domains to their learning section", () => {
-    // linkedin.com and oreilly.com are general sites. Requesting all of either
-    // would be a much larger ask than the extension needs.
+    // linkedin.com, oreilly.com and drive.google.com are general sites.
+    // Requesting any of them whole would be a far larger ask than a focus lock
+    // needs, and Drive especially so.
     const byHost = Object.fromEntries(
       siteMatches(manifest.content_scripts[0].matches).map((p) => [hostsFromPattern(p), p])
     );
     expect(byHost["linkedin.com"]).toBe("*://*.linkedin.com/learning/*");
     expect(byHost["oreilly.com"]).toBe("*://*.oreilly.com/library/*");
+    // Drive holds everything a person owns. Latch gets the file viewer only.
+    expect(byHost["drive.google.com"]).toBe("*://*.drive.google.com/file/*");
   });
 
   it("has no duplicate hosts", () => {
@@ -532,5 +542,33 @@ describe("document tabs", () => {
 
   it("still refuses hosts that are not course platforms", () => {
     expect(P.isSupportedHost("https://reddit.com/r/all")).toBe(false);
+  });
+});
+
+describe("Google Drive readings", () => {
+  it("is treated as a reading, not a lecture", () => {
+    // Drive's viewer is a web app, so document.contentType is text/html and the
+    // PDF detection cannot see it. Only the adapter knows.
+    expect(P.siteFor("drive.google.com").reading).toBe(true);
+    expect(P.isDocumentTab("text/html")).toBe(false);
+  });
+
+  it("leaves every video platform alone", () => {
+    for (const host of ["youtube.com", "udemy.com", "coursera.org", "vimeo.com"]) {
+      expect(P.siteFor(host).reading, host).toBe(false);
+    }
+  });
+
+  it("is reachable by the tab guard", () => {
+    expect(P.isSupportedHost("https://drive.google.com/file/d/abc123/view")).toBe(true);
+  });
+
+  it("names the document without Drive's own suffix or the extension", () => {
+    // What lock.js does in order: strip the site suffix the tab title carries,
+    // then the file extension. Either alone leaves the wall naming the thing
+    // badly.
+    const stripSite = (t) => t.replace(/\s*[-|·–]\s*[^-|·–]{1,30}$/, "").trim() || t;
+    expect(P.readingTitle(stripSite("Week 6 Python Notes - Unknown IITians.pdf - Google Drive")))
+      .toBe("Week 6 Python Notes - Unknown IITians");
   });
 });

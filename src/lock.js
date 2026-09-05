@@ -29,6 +29,16 @@
   const isDoc = P.isDocumentTab(document.contentType);
 
   /**
+   * Is this a reading rather than a lecture?
+   *
+   * Two different things arrive here. Chrome's own PDF viewer, which announces
+   * itself through the content type, and sites whose viewer is a web app so the
+   * content type says text/html and only the adapter knows better. Google Drive
+   * is the second kind, and course notes live there constantly.
+   */
+  const isReading = isDoc || site.reading === true;
+
+  /**
    * querySelector that cannot throw.
    *
    * Selectors now come from a per-site table, so a typo in one entry would
@@ -134,7 +144,7 @@
     // where requestFullscreen() is allowed to work. This is why the wall has a
     // button instead of just putting you back automatically.
     const back = root.querySelector(".latch-back");
-    if (isDoc) back.textContent = "Back to the reading";
+    if (isReading) back.textContent = "Back to the reading";
     back.addEventListener("click", () => {
       const v = video();
       // Full screen goes on the player wrapper where a site has one, since the
@@ -234,7 +244,7 @@
     dock = document.createElement("button");
     dock.id = "latch-dock";
     dock.type = "button";
-    dock.textContent = isDoc ? "Lock this reading" : "Lock this tab";
+    dock.textContent = isReading ? "Lock this reading" : "Lock this tab";
     dock.addEventListener("click", () => {
       document.documentElement.requestFullscreen?.().catch(() => {
         toast("Chrome refused full screen here. Latch cannot lock this tab.");
@@ -425,18 +435,20 @@
    */
   function lectureTitle() {
     const fromDom = q(site.title)?.textContent?.trim();
-    if (fromDom) return fromDom;
-    // A PDF has no heading to read: the tab title is the filename, and the
-    // extension on the end is noise on a wall that is trying to name the thing
-    // you are walking out of.
-    if (isDoc) return P.readingTitle(document.title);
+    if (fromDom) return isReading ? P.readingTitle(fromDom) : fromDom;
     // Most course platforms suffix the site name onto the tab title.
-    return document.title.replace(/\s*[-|·–]\s*[^-|·–]{1,30}$/, "").trim() || document.title;
+    const stripped =
+      document.title.replace(/\s*[-|·–]\s*[^-|·–]{1,30}$/, "").trim() || document.title;
+    // A reading has no heading to borrow, so the tab title is the filename, and
+    // the extension on the end is noise on a wall trying to name the thing you
+    // are walking out of. Order matters: the site suffix goes first, since
+    // "notes.pdf - Google Drive" only ends in .pdf once Drive is off the end.
+    return isReading ? P.readingTitle(stripped) : stripped;
   }
 
   function remainingLabel() {
     const v = video();
-    if (isDoc) return "Reading lock";
+    if (isReading) return "Reading lock";
     if (!v || !v.duration) return "Lecture lock";
     const left = Math.max(0, v.duration - v.currentTime);
     const m = Math.floor(left / 60);

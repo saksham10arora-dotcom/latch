@@ -55,6 +55,7 @@
     "*://*.podia.com/*",
     "*://*.maven.com/*",
     "*://*.vimeo.com/*",
+    "*://*.drive.google.com/file/*",
     "file:///*"
   ],
   "content_scripts": [
@@ -107,6 +108,7 @@
         "*://*.podia.com/*",
         "*://*.maven.com/*",
         "*://*.vimeo.com/*",
+        "*://*.drive.google.com/file/*",
         "file:///*"
       ],
       "js": [
