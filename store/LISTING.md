@@ -113,23 +113,37 @@ creditworthiness.
 | Item | Requirement | File |
 |---|---|---|
 | Icon | 128x128 PNG | `icons/icon-128.png` |
-| Screenshot | 1280x800 or 640x400, at least one | `store/screenshot-wall.png` |
+| Screenshot 1 | exactly 1280x800 | `store/screenshot-1-lecture.png` |
+| Screenshot 2 | exactly 1280x800 | `store/screenshot-2-reading.png` |
 
-`screenshot-source.html` regenerates the screenshot. Open it and capture at
-1280x800, or:
+Upload both: the lecture one shows the gauge, the reading one shows the same
+lock on a PDF with no progress to display. Between them they say what the
+extension covers without a word of copy.
+
+Rebuild them with:
 
 ```bash
-"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
-  --headless --screenshot=out.png --window-size=1280,800 \
-  file://$PWD/store/screenshot-source.html
+bash scripts/screenshots.sh
 ```
+
+That renders from `src/lock.css` and the markup inside `src/lock.js`, so the
+screenshots cannot drift from the shipped design. The previous generator kept
+its own copy of the stylesheet and did drift: the wall was rebuilt around the
+gauge and the screenshot went on showing the progress rail that used to be
+there.
+
+**Do not upload `store/screenshot-wall.png`.** It is 1120x700, which the store
+rejects, and it shows the old design.
 
 ## Before you submit
 
-- A privacy policy URL is required once any permission is declared. The README
-  section covers it; link to the repo, or add a `PRIVACY.md` and link that.
-- Bump `version` in `manifest.json` for every upload. The store
-  rejects a re-upload of a version it already has.
+- **Privacy policy URL**, required because permissions are declared. Use:
+  `https://github.com/saksham10arora-dotcom/latch/blob/main/PRIVACY.md`
+  It has to be reachable before you submit, so push `PRIVACY.md` first.
+- Bump `version` in `manifest.json` for every upload. The store rejects a
+  re-upload of a version it already has. It currently reads `0.1.0`, which is
+  honest for a first release; `1.0.0` is a positioning choice, not a technical
+  one, so change it only if you want it read as finished.
 - Build the package with `bash scripts/package.sh` and upload
   `build/latch.zip`. Never zip the repo directly: it contains
   `node_modules` and tests.
