@@ -229,6 +229,9 @@ No network requests, no analytics, nothing leaves your machine. `storage` holds
 your own settings and the lock state. `tabs` is what lets the lock return you to
 the lecture tab and reopen it if it is closed.
 
+The full policy, including exactly which six values are stored and what is read
+from a page, is in [PRIVACY.md](PRIVACY.md).
+
 ---
 
 ## Known limits
