@@ -151,6 +151,69 @@ chrome.commands.onCommand.addListener(async (command) => {
 
 // The popup only knows it wants to arm; it does not know which tab. Resolving
 // that here keeps one definition of "the locked tab".
+
+// ---- Generated nudges ------------------------------------------------------
+//
+// The worker owns this rather than the page for one reason: the API key. A
+// content script runs in the page's world, so anything it holds is readable by
+// the site it was injected into. The key stays here and the page only ever
+// sees the sentence that came back.
+//
+// Kept deliberately dumb. It takes a finished prompt and returns raw text; the
+// prompt building and the parsing both live in persuade.js where they are unit
+// testable, which also honours the no-importScripts rule at the top of this
+// file: nothing here has to load before the guards register.
+const NUDGE_URL = "https://api.cerebras.ai/v1/chat/completions";
+const NUDGE_CACHE = new Map();
+
+// The wall is allowed to ask again the moment you bounce off it, and a trial
+// key rate limits hard. One generation per title per minute is both what the
+// wall wants visually (it must not flicker new text on a redraw) and what the
+// quota can afford.
+async function generateNudge(prompt, cacheKey) {
+  if (cacheKey && NUDGE_CACHE.has(cacheKey)) return NUDGE_CACHE.get(cacheKey);
+  const cfg = await chrome.storage.local.get({ nudgeKey: "", nudgeModel: "gpt-oss-120b" });
+  if (!cfg.nudgeKey) return null;
+
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 2500);
+  try {
+    const res = await fetch(NUDGE_URL, {
+      method: "POST",
+      signal: ctl.signal,
+      headers: {
+        Authorization: `Bearer ${cfg.nudgeKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: cfg.nudgeModel,
+        messages: [{ role: "user", content: prompt }],
+        // Both models this endpoint serves think before they answer. "low"
+        // effort is what makes a one sentence reply arrive at all, and the
+        // ceiling is 400 rather than the ~60 the sentence needs because the
+        // reasoning is billed against the same budget: measured at 160 the
+        // model spent the lot thinking and returned empty content one time in
+        // five, which the wall then had to discard. At 400 that stopped.
+        max_tokens: 400,
+        reasoning_effort: "low",
+        temperature: 0.7,
+      }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const text = data?.choices?.[0]?.message?.content?.trim();
+    if (!text) return null;
+    if (cacheKey) NUDGE_CACHE.set(cacheKey, text);
+    return text;
+  } catch {
+    // Aborts, offline, rate limits and malformed replies all land here and all
+    // mean the same thing to the caller: keep the canned line.
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   (async () => {
     if (msg?.type === "arm") {
@@ -168,6 +231,9 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       const s = await get();
       if (s[KEY.armed] && s[KEY.engaged]) await snapBack("page-blur");
       sendResponse({ ok: true });
+      return;
+    } else if (msg?.type === "nudge") {
+      sendResponse({ text: await generateNudge(msg.prompt, msg.cacheKey) });
       return;
     } else if (msg?.type === "release") {
       // The wall's completed hold. The one route allowed to end an engaged lock.

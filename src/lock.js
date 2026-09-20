@@ -1,6 +1,12 @@
 /* global LatchPersuade */
 (() => {
   const P = LatchPersuade;
+  // How long a generated nudge has to arrive before the wall is considered
+  // settled. Measured against the real endpoint at about 380ms round trip, so
+  // this is that plus headroom for a cold worker, and still short enough that
+  // a swap reads as the wall arriving rather than changing its mind.
+  const NUDGE_WINDOW_MS = 900;
+  let wallToken = 0;
   let state = { ...P.DEFAULTS };
   let overlay = null;
   let held = 0;
@@ -101,6 +107,22 @@
     try {
       chrome.runtime.sendMessage(message)?.catch?.(() => {});
     } catch { /* orphaned */ }
+  }
+
+  /**
+   * Like `tell`, but for the one message that needs an answer back.
+   *
+   * Resolves to null on every failure rather than rejecting, because every
+   * caller treats "no answer" and "a bad answer" identically: keep what is
+   * already on screen.
+   */
+  function ask(message) {
+    if (!alive()) return Promise.resolve(null);
+    try {
+      return Promise.resolve(chrome.runtime.sendMessage(message)).catch(() => null);
+    } catch {
+      return Promise.resolve(null); /* orphaned */
+    }
   }
 
   // --- overlay -------------------------------------------------------------
@@ -277,6 +299,49 @@
 
   const phraseValue = () => overlay?.querySelector(".latch-phrase")?.value ?? "";
 
+
+  /**
+   * Ask for a nudge that knows what you are watching.
+   *
+   * Fire and forget on purpose. Every failure path, no key, rate limited,
+   * offline, slow, malformed, resolves to "leave the wall alone", because the
+   * text it would replace is already good. The only thing that must not happen
+   * is a wall that waits for a network round trip before it says anything, so
+   * nothing here is ever awaited by `up()`.
+   *
+   * `wallToken` guards the swap: raise the wall, dismiss it, raise it again,
+   * and a reply from the first wall must not land on the third.
+   */
+  function askForNudge(v) {
+    const token = ++wallToken;
+    const title = lectureTitle();
+    if (!title) return;
+    const facts = {
+      title,
+      watchedSeconds: v?.currentTime ?? 0,
+      remainingSeconds: v && v.duration ? v.duration - v.currentTime : null,
+      breaks: state.breaks,
+      reading: !v,
+    };
+    let done = false;
+    // Past this point the wall has settled and swapping text would read as a
+    // glitch rather than an arrival, so a late reply is simply dropped.
+    setTimeout(() => { done = true; }, NUDGE_WINDOW_MS);
+
+    ask({ type: "nudge", prompt: P.aiPrompt(facts), cacheKey: P.nudgeCacheKey(facts) })
+      .then((reply) => {
+        if (done || token !== wallToken || !overlay) return;
+        const parsed = P.parseAiNudge(reply?.text);
+        if (!parsed) return;
+        const head = overlay.querySelector(".latch-head");
+        const body = overlay.querySelector(".latch-body");
+        if (!head || !body) return;
+        head.textContent = parsed.headline;
+        body.textContent = parsed.body;
+        overlay.dataset.latchNudge = "generated";
+      });
+  }
+
   function refreshHint() {
     if (!overlay) return;
     const hint = overlay.querySelector(".latch-hint");
@@ -302,6 +367,10 @@
     });
     overlay.querySelector(".latch-head").textContent = n.headline;
     overlay.querySelector(".latch-body").textContent = n.body;
+    // The canned line is on screen before anything is asked of the network.
+    // Generation races the fade-in from here and upgrades the text in place if
+    // it wins; if it loses, nothing happens and the wall is still correct.
+    askForNudge(v);
     overlay.querySelector(".latch-meta").textContent = remainingLabel();
     overlay.querySelector(".latch-title").textContent = lectureTitle();
     // The wall's own entrance is independent of anything the page knows, so it

@@ -298,8 +298,11 @@ describe("resilience of the two calls that were actually failing", () => {
     expect(content).toMatch(/function alive\(\)/);
     expect(content).toMatch(/chrome\.runtime\?\.id/);
     // The only raw uses left are inside the guards themselves and the boot read.
+    // One raw use per guard: store(), tell() and ask(). Anything above that is
+    // a call that skipped them.
+    expect(content).toMatch(/function ask\(message\)/);
     const raw = content.match(/chrome\.(storage\.local\.set|runtime\.sendMessage)\(/g) || [];
-    expect(raw.length, "an unguarded chrome call crept back in").toBeLessThanOrEqual(2);
+    expect(raw.length, "an unguarded chrome call crept back in").toBeLessThanOrEqual(3);
   });
 });
 
@@ -443,6 +446,8 @@ describe("the host list lives in three places and must not drift", () => {
   // and is exempted from the host comparisons below rather than being allowed
   // to quietly widen them.
   const FILE_MATCH = "file:///*";
+  // A fetch target for the worker, never a page Latch is injected into.
+  const API_HOSTS = ["https://api.cerebras.ai/*"];
   const siteMatches = (list) => list.filter((p) => p !== FILE_MATCH);
 
   it("asks for local files in both places", () => {
@@ -473,8 +478,15 @@ describe("the host list lives in three places and must not drift", () => {
   });
 
   it("host_permissions and content script matches agree", () => {
-    expect([...manifest.host_permissions].sort())
+    // The generated-nudge endpoint belongs in host_permissions so the worker
+    // may fetch it, and must stay out of the match list: a content script on
+    // an API origin would be a permission this extension has no use for.
+    expect([...manifest.host_permissions].filter((p) => !API_HOSTS.includes(p)).sort())
       .toEqual([...manifest.content_scripts[0].matches].sort());
+    for (const host of API_HOSTS) {
+      expect(manifest.host_permissions).toContain(host);
+      expect(manifest.content_scripts[0].matches).not.toContain(host);
+    }
   });
 
   it("scopes the broad domains to their learning section", () => {
@@ -570,5 +582,71 @@ describe("Google Drive readings", () => {
     const stripSite = (t) => t.replace(/\s*[-|·–]\s*[^-|·–]{1,30}$/, "").trim() || t;
     expect(P.readingTitle(stripSite("Week 6 Python Notes - Unknown IITians.pdf - Google Drive")))
       .toBe("Week 6 Python Notes - Unknown IITians");
+  });
+});
+
+describe("generated nudges", () => {
+  const facts = {
+    title: "Gradient Descent and Learning Rates",
+    watchedSeconds: 2280,
+    remainingSeconds: 240,
+    breaks: 2,
+  };
+
+  it("puts the things only the page knows into the prompt", () => {
+    const p = P.aiPrompt(facts);
+    expect(p).toContain("Gradient Descent and Learning Rates");
+    expect(p).toContain("38 minutes in");
+    expect(p).toContain("4 minutes left");
+    expect(p).toContain("2 times");
+  });
+
+  it("calls a PDF a reading, because calling it a lecture would be wrong", () => {
+    expect(P.aiPrompt({ ...facts, reading: true })).toContain("reading is titled");
+    expect(P.aiPrompt(facts)).toContain("lecture is titled");
+  });
+
+  it("leaves out facts it does not have rather than inventing them", () => {
+    const p = P.aiPrompt({ title: "Something", watchedSeconds: 0, remainingSeconds: null });
+    expect(p).not.toContain("minutes in");
+    expect(p).not.toContain("minutes left");
+    expect(p).not.toContain("tried to quit");
+  });
+
+  it("is stable within a minute and moves across one", () => {
+    const k = (s) => P.nudgeCacheKey({ title: "T", watchedSeconds: s });
+    expect(k(600)).toBe(k(659));
+    expect(k(600)).not.toBe(k(660));
+  });
+
+  it("strips the dashes a model reaches for", () => {
+    expect(P.stripDashes("Gradient Descent\u2014stay put")).toBe("Gradient Descent, stay put");
+    expect(P.stripDashes("four minutes \u2013 then done")).toBe("four minutes, then done");
+    expect(P.stripDashes("plain text")).toBe("plain text");
+  });
+
+  it("reads a two line reply into the shape the wall renders", () => {
+    const n = P.parseAiNudge(
+      'Four minutes left\nYou are about to quit right before he shows why the learning rate decides whether this converges.'
+    );
+    expect(n.headline).toBe("Four minutes left");
+    expect(n.body).toContain("learning rate");
+    expect(n.generated).toBe(true);
+  });
+
+  it("refuses a reply it cannot use, so the canned line survives", () => {
+    // Every one of these was cheaper to reject than to rescue: the wall
+    // already has a good sentence on it.
+    expect(P.parseAiNudge("")).toBeNull();
+    expect(P.parseAiNudge(null)).toBeNull();
+    expect(P.parseAiNudge("Only one line and no body")).toBeNull();
+    expect(P.parseAiNudge("Hi\nshort")).toBeNull();
+  });
+
+  it("drops the quotes and asterisks models wrap things in", () => {
+    const n = P.parseAiNudge('"Four minutes left"\n*You are almost through the hard part of this lecture already.*');
+    expect(n.headline).toBe("Four minutes left");
+    expect(n.body.startsWith("You are")).toBe(true);
+    expect(n.body).not.toContain("*");
   });
 });

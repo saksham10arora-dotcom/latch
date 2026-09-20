@@ -94,6 +94,81 @@
     return NUDGES[i];
   }
 
+
+  /**
+   * ---- Generated nudges -------------------------------------------------
+   *
+   * Everything above is deliberately offline: the wall must say something
+   * true the instant it appears, and a network call cannot promise that.
+   * What a model adds is the one fact the canned lines cannot know, which is
+   * what you are actually watching. "You are 38 minutes in" is an argument.
+   * "You are about to quit Gradient Descent four minutes before the part
+   * about learning rates" is the same argument with your name on it.
+   *
+   * So generation never blocks the wall. `nudge()` renders first, a request
+   * goes out alongside it, and if the answer lands inside the fade-in it
+   * replaces the text in place. Miss the window and you simply keep the
+   * canned line, which was always good enough. That makes the model an
+   * upgrade on a fast path rather than a dependency on a slow one.
+   */
+
+  /** Stable within a minute, so repeat attempts reuse one generation. */
+  function nudgeCacheKey({ title = "", watchedSeconds = 0 } = {}) {
+    return `${String(title).slice(0, 120)}|${Math.floor(watchedSeconds / 60)}`;
+  }
+
+  /** The ask. Short output on purpose: the wall has room for two lines. */
+  function aiPrompt({ title = "", watchedSeconds = 0, remainingSeconds = null,
+                      breaks = 0, reading = false } = {}) {
+    const kind = reading ? "reading" : "lecture";
+    const mins = Math.floor(watchedSeconds / 60);
+    const left = remainingSeconds === null ? null : Math.max(0, Math.round(remainingSeconds / 60));
+    const facts = [
+      `The ${kind} is titled "${String(title).slice(0, 120)}".`,
+      mins > 0 ? `They are ${mins} minutes in.` : null,
+      left !== null ? `There are about ${left} minutes left.` : null,
+      breaks > 0 ? `They have already tried to quit ${breaks} time${breaks === 1 ? "" : "s"}.` : null,
+    ].filter(Boolean).join(" ");
+
+    return (
+      "You are the lock screen of a focus app. Someone is trying to quit part way " +
+      "through and you have one chance to make them stay.\n\n" + facts + "\n\n" +
+      "Reply with exactly two lines and nothing else.\n" +
+      "Line 1: a headline, at most 6 words.\n" +
+      "Line 2: one sentence, at most 28 words, that refers to the actual subject " +
+      "matter of that title rather than talking about focus in general.\n\n" +
+      "Be direct and a little blunt. Do not be cheerful, do not use exclamation " +
+      "marks, do not use dashes of any kind, do not use quotation marks, and do " +
+      "not mention that you are an AI."
+    );
+  }
+
+  /** Dashes are a tell. The wall does not use them. */
+  function stripDashes(text) {
+    return String(text || "")
+      .replace(/\s*[\u2014\u2013]\s*/g, ", ")
+      .replace(/\s+--\s+/g, ", ")
+      .replace(/,\s*,/g, ",");
+  }
+
+  /**
+   * Turn a model reply into the same shape `nudge()` returns, or null.
+   *
+   * Null is a first class answer here. A malformed generation is not worth
+   * rescuing when a good canned line is already on screen.
+   */
+  function parseAiNudge(raw) {
+    const lines = String(raw || "")
+      .split("\n")
+      .map((l) => stripDashes(l).replace(/^["'*\s]+|["'*\s]+$/g, "").trim())
+      .filter(Boolean);
+    if (lines.length < 2) return null;
+    const headline = lines[0].slice(0, 60);
+    const body = lines.slice(1).join(" ").slice(0, 240);
+    if (headline.length < 3 || body.length < 20) return null;
+    return { headline, body, generated: true };
+  }
+
   /** Has the ritual been satisfied? Both conditions, when both are configured. */
   function unlockReady({ held = 0, holdSeconds = 8, typed = "", phrase = "" }) {
     if (held < holdSeconds) return false;
@@ -359,6 +434,10 @@
     shouldRaiseWallOnLoad,
     NUDGES,
     nudge,
+    nudgeCacheKey,
+    aiPrompt,
+    stripDashes,
+    parseAiNudge,
     unlockReady,
     isArmingChange,
     canDisarmFromPopup,
