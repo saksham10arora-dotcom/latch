@@ -249,6 +249,6 @@ from a page, is in [PRIVACY.md](PRIVACY.md).
 
 <div align="center">
 
-[MIT](LICENSE). Built with ❤️ by Saksham Arora.
+[MIT](LICENSE). Built with ❤️ by [Saksham Arora](https://saksham.digital).
 
 </div>
